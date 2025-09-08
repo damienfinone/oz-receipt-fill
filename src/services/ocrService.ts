@@ -211,9 +211,7 @@ export class OCRService {
 
   static async processInvoice(
     file: File, 
-    onProgress?: (progress: number) => void,
-    useAI: boolean = false,
-    aiParsingService?: any
+    onProgress?: (progress: number) => void
   ): Promise<{ data: Partial<ExtractedInvoiceData>; confidence: number; fieldsWithLowConfidence: string[] }> {
     try {
       onProgress?.(10);
@@ -222,26 +220,44 @@ export class OCRService {
       const text = await this.extractTextFromFile(file, true);
       onProgress?.(50);
       
-      let result: { data: Partial<ExtractedInvoiceData>; confidence: number; fieldsWithLowConfidence: string[] };
+      console.log('Using AI-enhanced parsing via edge function...');
       
-      if (useAI && aiParsingService) {
-        console.log('Using AI-enhanced parsing...');
-        result = await aiParsingService.parseWithFallback(text, this.parseAustralianInvoice);
-        onProgress?.(90);
-      } else {
-        console.log('Using local regex parsing...');
-        const extractedData = this.parseAustralianInvoice(text);
-        result = {
-          data: extractedData,
-          confidence: 60,
-          fieldsWithLowConfidence: Object.keys(extractedData).filter(key => 
-            !extractedData[key as keyof ExtractedInvoiceData] || 
-            String(extractedData[key as keyof ExtractedInvoiceData]).length < 2
-          )
-        };
-        onProgress?.(90);
+      try {
+        // Import supabase client dynamically to use in the service
+        const { supabase } = await import('@/integrations/supabase/client');
+        
+        // Call the edge function for AI parsing
+        const { data: aiResult, error } = await supabase.functions.invoke('parse-invoice', {
+          body: { text }
+        });
+        
+        if (error) {
+          console.warn('Edge function error, falling back to regex:', error);
+          throw new Error('Edge function failed');
+        }
+        
+        if (aiResult && aiResult.confidence > 0) {
+          onProgress?.(90);
+          onProgress?.(100);
+          return aiResult;
+        }
+      } catch (aiError) {
+        console.warn('AI parsing failed, falling back to regex:', aiError);
       }
       
+      // Fallback to local regex parsing
+      console.log('Using local regex parsing...');
+      const extractedData = this.parseAustralianInvoice(text);
+      const result = {
+        data: extractedData,
+        confidence: 60,
+        fieldsWithLowConfidence: Object.keys(extractedData).filter(key => 
+          !extractedData[key as keyof ExtractedInvoiceData] || 
+          String(extractedData[key as keyof ExtractedInvoiceData]).length < 2
+        )
+      };
+      
+      onProgress?.(90);
       onProgress?.(100);
       return result;
     } catch (error) {
