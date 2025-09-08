@@ -27,11 +27,18 @@ export class OCRService {
     const worker = await this.initializeWorker();
     
     try {
-      const { data: { text } } = await worker.recognize(file);
+      console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
+      
+      // Convert file to image buffer for better compatibility
+      const imageBuffer = await file.arrayBuffer();
+      const { data: { text } } = await worker.recognize(new Uint8Array(imageBuffer));
+      
+      console.log('Extracted text length:', text.length);
       return text;
     } catch (error) {
       console.error('OCR extraction failed:', error);
-      throw new Error('Failed to extract text from document');
+      console.error('File details:', { name: file.name, type: file.type, size: file.size });
+      throw new Error(`Failed to extract text from document: ${error.message}`);
     }
   }
 
