@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { DocumentPreview } from "@/components/DocumentPreview";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Car, DollarSign } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/components/ui/use-toast";
+import { OCRService } from "@/services/ocrService";
+import { FileText, Car, DollarSign, Loader2 } from "lucide-react";
 
 interface InvoiceData {
   vehicleMake: string;
@@ -20,7 +23,10 @@ interface InvoiceData {
 }
 
 const Index = () => {
+  const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     vehicleMake: "",
     vehicleModel: "",
@@ -34,24 +40,41 @@ const Index = () => {
     invoiceNumber: "",
   });
 
-  const handleFileUpload = (file: File) => {
+  // Cleanup OCR worker on unmount
+  useEffect(() => {
+    return () => {
+      OCRService.terminate();
+    };
+  }, []);
+
+  const handleFileUpload = async (file: File) => {
     setUploadedFile(file);
-    // In a real implementation, this would trigger OCR processing
-    // For now, we'll simulate with mock data
-    setTimeout(() => {
-      setInvoiceData({
-        vehicleMake: "Toyota",
-        vehicleModel: "Camry",
-        vehicleYear: "2023",
-        vin: "JTDBF3FG5P0123456",
-        purchasePrice: "35000.00",
-        gstAmount: "3500.00",
-        vendorName: "ABC Motors Pty Ltd",
-        vendorAbn: "12 345 678 901",
-        purchaseDate: "2024-01-15",
-        invoiceNumber: "INV-2024-001",
+    setIsProcessing(true);
+    setProcessingProgress(0);
+    
+    try {
+      const extractedData = await OCRService.processInvoice(file, (progress) => {
+        setProcessingProgress(progress);
       });
-    }, 2000);
+      
+      // Update form with extracted data
+      setInvoiceData(prev => ({ ...prev, ...extractedData }));
+      
+      toast({
+        title: "Document processed successfully",
+        description: "Invoice data has been extracted and populated in the form.",
+      });
+    } catch (error) {
+      console.error('Processing error:', error);
+      toast({
+        title: "Processing failed",
+        description: "Could not extract data from the document. Please fill the form manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setProcessingProgress(0);
+    }
   };
 
   const handleDataUpdate = (data: Partial<InvoiceData>) => {
@@ -129,12 +152,31 @@ const Index = () => {
             </Card>
 
             {/* Processing Status */}
-            {uploadedFile && (
+            {isProcessing && (
+              <Card className="p-4 border-primary/20 bg-primary/5">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <p className="text-sm font-medium">
+                      Processing document with AI extraction...
+                    </p>
+                  </div>
+                  <Progress value={processingProgress} className="w-full" />
+                  <p className="text-xs text-muted-foreground">
+                    {processingProgress < 25 ? 'Initializing OCR engine...' :
+                     processingProgress < 75 ? 'Extracting text from document...' :
+                     'Parsing invoice data...'}
+                  </p>
+                </div>
+              </Card>
+            )}
+            
+            {uploadedFile && !isProcessing && Object.values(invoiceData).some(value => value !== "") && (
               <Card className="p-4 border-success/20 bg-success/5">
                 <div className="flex items-center gap-2 text-success">
-                  <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                  <div className="h-2 w-2 rounded-full bg-success" />
                   <p className="text-sm font-medium">
-                    Processing document... Data will appear shortly
+                    Document processed successfully! Review and edit the extracted data.
                   </p>
                 </div>
               </Card>
