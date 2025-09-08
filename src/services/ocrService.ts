@@ -36,7 +36,7 @@ export class OCRService {
     
     // Get the first page
     const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR quality
+    const viewport = page.getViewport({ scale: 3.0 }); // Higher scale for better OCR quality
     
     // Create canvas
     const canvas = document.createElement('canvas');
@@ -64,7 +64,55 @@ export class OCRService {
     return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   }
 
-  static async extractTextFromFile(file: File): Promise<string> {
+  static async preprocessImage(imageBuffer: ArrayBuffer): Promise<ArrayBuffer> {
+    // Create canvas for image preprocessing
+    const blob = new Blob([imageBuffer]);
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    
+    return new Promise((resolve, reject) => {
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+        
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        // Apply contrast and brightness adjustments
+        const contrast = 1.2;
+        const brightness = 10;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          // Apply contrast and brightness to RGB channels
+          data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128 + brightness));     // Red
+          data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128 + brightness)); // Green  
+          data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128 + brightness)); // Blue
+        }
+        
+        // Put processed image data back
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Convert back to buffer
+        canvas.toBlob((blob) => {
+          if (blob) {
+            blob.arrayBuffer().then(resolve).catch(reject);
+          } else {
+            reject(new Error('Failed to process image'));
+          }
+        }, 'image/png', 0.95);
+      };
+      
+      img.onerror = reject;
+      img.src = URL.createObjectURL(blob);
+    });
+  }
+
+  static async extractTextFromFile(file: File, usePreprocessing: boolean = true): Promise<string> {
     const worker = await this.initializeWorker();
     
     try {
@@ -79,11 +127,18 @@ export class OCRService {
         console.log('PDF converted to image:', processedFile.name);
       }
       
-      // Convert file to image buffer for better compatibility
-      const imageBuffer = await processedFile.arrayBuffer();
-      const { data: { text } } = await worker.recognize(new Uint8Array(imageBuffer));
+      // Convert file to image buffer
+      let imageBuffer = await processedFile.arrayBuffer();
       
-      console.log('Extracted text length:', text.length);
+      // Apply image preprocessing if enabled
+      if (usePreprocessing) {
+        console.log('Applying image preprocessing...');
+        imageBuffer = await this.preprocessImage(imageBuffer);
+      }
+      
+      const { data: { text, confidence } } = await worker.recognize(new Uint8Array(imageBuffer));
+      
+      console.log('Extracted text length:', text.length, 'OCR confidence:', confidence);
       return text;
     } catch (error) {
       console.error('OCR extraction failed:', error);
@@ -154,18 +209,41 @@ export class OCRService {
     return data;
   }
 
-  static async processInvoice(file: File, onProgress?: (progress: number) => void): Promise<Partial<ExtractedInvoiceData>> {
+  static async processInvoice(
+    file: File, 
+    onProgress?: (progress: number) => void,
+    useAI: boolean = false,
+    aiParsingService?: any
+  ): Promise<{ data: Partial<ExtractedInvoiceData>; confidence: number; fieldsWithLowConfidence: string[] }> {
     try {
       onProgress?.(10);
       
-      // Extract text with different progress indicators for PDF vs image
-      const text = await this.extractTextFromFile(file);
-      onProgress?.(75);
+      // Extract text with preprocessing enabled
+      const text = await this.extractTextFromFile(file, true);
+      onProgress?.(50);
       
-      const extractedData = this.parseAustralianInvoice(text);
+      let result: { data: Partial<ExtractedInvoiceData>; confidence: number; fieldsWithLowConfidence: string[] };
+      
+      if (useAI && aiParsingService) {
+        console.log('Using AI-enhanced parsing...');
+        result = await aiParsingService.parseWithFallback(text, this.parseAustralianInvoice);
+        onProgress?.(90);
+      } else {
+        console.log('Using local regex parsing...');
+        const extractedData = this.parseAustralianInvoice(text);
+        result = {
+          data: extractedData,
+          confidence: 60,
+          fieldsWithLowConfidence: Object.keys(extractedData).filter(key => 
+            !extractedData[key as keyof ExtractedInvoiceData] || 
+            String(extractedData[key as keyof ExtractedInvoiceData]).length < 2
+          )
+        };
+        onProgress?.(90);
+      }
+      
       onProgress?.(100);
-      
-      return extractedData;
+      return result;
     } catch (error) {
       console.error('Invoice processing failed:', error);
       throw error;

@@ -2,6 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ConfidenceIndicator } from "@/components/ConfidenceIndicator";
 import { Car, Building, Receipt, Calendar } from "lucide-react";
 
 interface InvoiceData {
@@ -20,9 +21,11 @@ interface InvoiceData {
 interface InvoiceFormProps {
   data: InvoiceData;
   onDataUpdate: (data: Partial<InvoiceData>) => void;
+  confidence?: number;
+  fieldsWithLowConfidence?: string[];
 }
 
-export const InvoiceForm = ({ data, onDataUpdate }: InvoiceFormProps) => {
+export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfidence = [] }: InvoiceFormProps) => {
   const handleInputChange = (field: keyof InvoiceData, value: string) => {
     onDataUpdate({ [field]: value });
   };
@@ -45,15 +48,24 @@ export const InvoiceForm = ({ data, onDataUpdate }: InvoiceFormProps) => {
         <div className="flex items-center gap-2 mb-3">
           <Car className="h-4 w-4 text-primary" />
           <h3 className="font-semibold text-primary">Vehicle Information</h3>
+          {confidence && confidence > 0 && (
+            <ConfidenceIndicator confidence={confidence} />
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="vehicleMake">Make</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="vehicleMake">Make</Label>
+              {fieldsWithLowConfidence.includes('vehicleMake') && (
+                <ConfidenceIndicator confidence={0} fieldName="vehicleMake" isLowConfidence={true} />
+              )}
+            </div>
             <Input
               id="vehicleMake"
               value={data.vehicleMake}
               onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
               placeholder="e.g., Toyota"
+              className={fieldsWithLowConfidence.includes('vehicleMake') ? 'border-destructive' : ''}
             />
           </div>
           <div className="space-y-2">

@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { DocumentPreview } from "@/components/DocumentPreview";
+import { ProcessingOptions } from "@/components/ProcessingOptions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { OCRService } from "@/services/ocrService";
+import { AIParsingService } from "@/services/aiParsingService";
 import { FileText, Car, DollarSign, Loader2 } from "lucide-react";
 
 interface InvoiceData {
@@ -39,6 +41,42 @@ const Index = () => {
     purchaseDate: "",
     invoiceNumber: "",
   });
+  
+  // AI Processing state
+  const [useAI, setUseAI] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [isApiKeyValid, setIsApiKeyValid] = useState(false);
+  const [confidence, setConfidence] = useState(0);
+  const [fieldsWithLowConfidence, setFieldsWithLowConfidence] = useState<string[]>([]);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('openai-api-key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setIsApiKeyValid(true);
+      AIParsingService.initializeOpenAI(savedApiKey);
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (apiKey.startsWith('sk-')) {
+      localStorage.setItem('openai-api-key', apiKey);
+      setIsApiKeyValid(true);
+      AIParsingService.initializeOpenAI(apiKey);
+      setUseAI(true);
+      toast({
+        title: "API Key saved",
+        description: "AI-enhanced processing is now enabled.",
+      });
+    } else {
+      toast({
+        title: "Invalid API Key",
+        description: "Please enter a valid OpenAI API key starting with 'sk-'.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Cleanup OCR worker on unmount
   useEffect(() => {
@@ -53,17 +91,34 @@ const Index = () => {
     setProcessingProgress(0);
     
     try {
-      const extractedData = await OCRService.processInvoice(file, (progress) => {
-        setProcessingProgress(progress);
-      });
+      const result = await OCRService.processInvoice(
+        file, 
+        (progress) => setProcessingProgress(progress),
+        useAI && isApiKeyValid,
+        AIParsingService
+      );
       
       // Update form with extracted data
-      setInvoiceData(prev => ({ ...prev, ...extractedData }));
+      setInvoiceData(prev => ({ ...prev, ...result.data }));
+      setConfidence(result.confidence);
+      setFieldsWithLowConfidence(result.fieldsWithLowConfidence);
+      
+      const accuracyText = useAI && isApiKeyValid ? 
+        `AI-enhanced processing complete (${result.confidence}% confidence)` :
+        `Local processing complete (${result.confidence}% confidence)`;
       
       toast({
         title: "Document processed successfully",
-        description: "Invoice data has been extracted and populated in the form.",
+        description: accuracyText,
       });
+      
+      if (result.fieldsWithLowConfidence.length > 0) {
+        toast({
+          title: "Some fields need verification",
+          description: `Please review: ${result.fieldsWithLowConfidence.join(', ')}`,
+          variant: "default",
+        });
+      }
     } catch (error) {
       console.error('Processing error:', error);
       toast({
@@ -118,6 +173,15 @@ const Index = () => {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Upload & Preview */}
           <div className="space-y-6">
+            <ProcessingOptions
+              useAI={useAI}
+              onUseAIChange={setUseAI}
+              apiKey={apiKey}
+              onApiKeyChange={setApiKey}
+              onSaveApiKey={handleSaveApiKey}
+              isApiKeyValid={isApiKeyValid}
+            />
+            
             <Card className="p-6 shadow-card">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-5 w-5 text-primary" />
@@ -148,7 +212,12 @@ const Index = () => {
                   </Button>
                 )}
               </div>
-              <InvoiceForm data={invoiceData} onDataUpdate={handleDataUpdate} />
+              <InvoiceForm 
+                data={invoiceData} 
+                onDataUpdate={handleDataUpdate}
+                confidence={confidence}
+                fieldsWithLowConfidence={fieldsWithLowConfidence}
+              />
             </Card>
 
             {/* Processing Status */}
@@ -158,7 +227,10 @@ const Index = () => {
                   <div className="flex items-center gap-2 text-primary">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <p className="text-sm font-medium">
-                      Processing document with AI extraction...
+                      {useAI && isApiKeyValid ? 
+                        'Processing document with AI-enhanced extraction...' :
+                        'Processing document with local OCR...'
+                      }
                     </p>
                   </div>
                   <Progress value={processingProgress} className="w-full" />
