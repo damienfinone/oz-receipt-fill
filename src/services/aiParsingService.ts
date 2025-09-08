@@ -40,12 +40,30 @@ export class AIParsingService {
             3. A list of field names where confidence is below 80%
 
             Expected fields:
-            - vehicleMake: Car manufacturer (Toyota, Holden, Ford, etc.)
-            - vehicleModel: Model name
-            - vehicleYear: Year (YYYY format)
-            - vin: Vehicle Identification Number (17 characters)
-            - purchasePrice: Total purchase amount (numbers only, no currency symbols)
+            Financial:
+            - totalCost: Total cost including all charges (numbers only, no currency symbols)
+            - deposit: Deposit amount if mentioned (numbers only)
+            - purchasePrice: Purchase price/subtotal (numbers only, no currency symbols)
             - gstAmount: GST amount (numbers only)
+            
+            Vehicle Details:
+            - assetType: Type of asset (motor-vehicle, motorcycle, etc.)
+            - bodyType: Body type (sedan, hatchback, SUV, etc.)
+            - vehicleMake: Car manufacturer (Toyota, Holden, Ford, BYD, etc.)
+            - vehicleModel: Model name (Camry, SEAL, etc.)
+            - vehicleYear: Year (YYYY format)
+            - transmission: Transmission type (automatic, manual, etc.)
+            - fuelType: Fuel type (electric, petrol, diesel, hybrid, etc.)
+            - color: Vehicle color
+            - engineNumber: Engine number if available
+            
+            Identification:
+            - vin: Vehicle Identification Number (17 characters)
+            - nvic: National Vehicle Identification Code
+            - registration: Registration number
+            - state: Australian state (NSW, VIC, QLD, WA, SA, TAS, NT, ACT)
+            
+            Vendor & Invoice:
             - vendorName: Business/dealer name
             - vendorAbn: Australian Business Number (format: XX XXX XXX XXX)
             - purchaseDate: Date in YYYY-MM-DD format

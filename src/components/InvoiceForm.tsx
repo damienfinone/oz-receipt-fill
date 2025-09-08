@@ -3,15 +3,34 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ConfidenceIndicator } from "@/components/ConfidenceIndicator";
-import { Car, Building, Receipt, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Car, Building, Receipt, Calendar, DollarSign, Settings } from "lucide-react";
 
 interface InvoiceData {
+  // Financial
+  totalCost: string;
+  deposit: string;
+  purchasePrice: string;
+  gstAmount: string;
+  
+  // Vehicle Details
+  assetType: string;
+  bodyType: string;
   vehicleMake: string;
   vehicleModel: string;
   vehicleYear: string;
+  transmission: string;
+  fuelType: string;
+  color: string;
+  engineNumber: string;
+  
+  // Identification
   vin: string;
-  purchasePrice: string;
-  gstAmount: string;
+  nvic: string;
+  registration: string;
+  state: string;
+  
+  // Vendor & Invoice
   vendorName: string;
   vendorAbn: string;
   purchaseDate: string;
@@ -43,78 +62,49 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
 
   return (
     <div className="space-y-6">
-      {/* Vehicle Information */}
-      <Card className="p-4 border-primary/20 bg-primary/5">
+      {/* Financial Information */}
+      <Card className="p-4 border-success/20 bg-success/5">
         <div className="flex items-center gap-2 mb-3">
-          <Car className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-primary">Vehicle Information</h3>
+          <DollarSign className="h-4 w-4 text-success" />
+          <h3 className="font-semibold text-success">Financial Details</h3>
           {confidence && confidence > 0 && (
             <ConfidenceIndicator confidence={confidence} />
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="vehicleMake">Make</Label>
-              {fieldsWithLowConfidence.includes('vehicleMake') && (
-                <ConfidenceIndicator confidence={0} fieldName="vehicleMake" isLowConfidence={true} />
-              )}
-            </div>
+            <Label htmlFor="totalCost">Total Cost (AUD)</Label>
             <Input
-              id="vehicleMake"
-              value={data.vehicleMake}
-              onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
-              placeholder="e.g., Toyota"
-              className={fieldsWithLowConfidence.includes('vehicleMake') ? 'border-destructive' : ''}
+              id="totalCost"
+              value={data.totalCost}
+              onChange={(e) => handleInputChange('totalCost', e.target.value)}
+              placeholder="56,180.66"
+              onBlur={(e) => {
+                const formatted = formatCurrency(e.target.value);
+                handleInputChange('totalCost', formatted);
+              }}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="vehicleModel">Model</Label>
+            <Label htmlFor="deposit">Deposit (AUD)</Label>
             <Input
-              id="vehicleModel"
-              value={data.vehicleModel}
-              onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
-              placeholder="e.g., Camry"
+              id="deposit"
+              value={data.deposit}
+              onChange={(e) => handleInputChange('deposit', e.target.value)}
+              placeholder="5,000.00"
+              onBlur={(e) => {
+                const formatted = formatCurrency(e.target.value);
+                handleInputChange('deposit', formatted);
+              }}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="vehicleYear">Year</Label>
-            <Input
-              id="vehicleYear"
-              value={data.vehicleYear}
-              onChange={(e) => handleInputChange('vehicleYear', e.target.value)}
-              placeholder="e.g., 2023"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="vin">VIN Number</Label>
-            <Input
-              id="vin"
-              value={data.vin}
-              onChange={(e) => handleInputChange('vin', e.target.value)}
-              placeholder="17-character VIN"
-              className="font-mono text-sm"
-            />
-          </div>
-        </div>
-      </Card>
-
-      <Separator />
-
-      {/* Financial Information */}
-      <Card className="p-4 border-success/20 bg-success/5">
-        <div className="flex items-center gap-2 mb-3">
-          <Receipt className="h-4 w-4 text-success" />
-          <h3 className="font-semibold text-success">Financial Details</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="purchasePrice">Purchase Price (AUD)</Label>
             <Input
               id="purchasePrice"
               value={data.purchasePrice}
               onChange={(e) => handleInputChange('purchasePrice', e.target.value)}
-              placeholder="35,000.00"
+              placeholder="51,236.53"
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('purchasePrice', formatted);
@@ -127,12 +117,202 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               id="gstAmount"
               value={data.gstAmount}
               onChange={(e) => handleInputChange('gstAmount', e.target.value)}
-              placeholder="3,500.00"
+              placeholder="4,944.13"
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('gstAmount', formatted);
               }}
             />
+          </div>
+        </div>
+      </Card>
+
+      <Separator />
+
+      {/* Vehicle Information */}
+      <Card className="p-4 border-primary/20 bg-primary/5">
+        <div className="flex items-center gap-2 mb-3">
+          <Car className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-primary">Vehicle Information</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="assetType">Asset Type</Label>
+            <Select value={data.assetType} onValueChange={(value) => handleInputChange('assetType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select asset type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="motor-vehicle">Motor Vehicle</SelectItem>
+                <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                <SelectItem value="commercial-vehicle">Commercial Vehicle</SelectItem>
+                <SelectItem value="trailer">Trailer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bodyType">Body Type</Label>
+            <Select value={data.bodyType} onValueChange={(value) => handleInputChange('bodyType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select body type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sedan">Sedan</SelectItem>
+                <SelectItem value="hatchback">Hatchback</SelectItem>
+                <SelectItem value="suv">SUV</SelectItem>
+                <SelectItem value="wagon">Wagon</SelectItem>
+                <SelectItem value="coupe">Coupe</SelectItem>
+                <SelectItem value="convertible">Convertible</SelectItem>
+                <SelectItem value="ute">Ute</SelectItem>
+                <SelectItem value="van">Van</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="vehicleMake">Make</Label>
+              {fieldsWithLowConfidence.includes('vehicleMake') && (
+                <ConfidenceIndicator confidence={0} fieldName="vehicleMake" isLowConfidence={true} />
+              )}
+            </div>
+            <Input
+              id="vehicleMake"
+              value={data.vehicleMake}
+              onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
+              placeholder="e.g., BYD"
+              className={fieldsWithLowConfidence.includes('vehicleMake') ? 'border-destructive' : ''}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vehicleModel">Model</Label>
+            <Input
+              id="vehicleModel"
+              value={data.vehicleModel}
+              onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
+              placeholder="e.g., SEAL"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vehicleYear">Year</Label>
+            <Select value={data.vehicleYear} onValueChange={(value) => handleInputChange('vehicleYear', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 26 }, (_, i) => {
+                  const year = (2025 - i).toString();
+                  return <SelectItem key={year} value={year}>{year}</SelectItem>;
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="transmission">Transmission</Label>
+            <Select value={data.transmission} onValueChange={(value) => handleInputChange('transmission', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select transmission" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="automatic">Automatic</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="cvt">CVT</SelectItem>
+                <SelectItem value="dual-clutch">Dual Clutch</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="fuelType">Fuel Type</Label>
+            <Select value={data.fuelType} onValueChange={(value) => handleInputChange('fuelType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select fuel type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="electric">Electric</SelectItem>
+                <SelectItem value="petrol">Petrol</SelectItem>
+                <SelectItem value="diesel">Diesel</SelectItem>
+                <SelectItem value="hybrid">Hybrid</SelectItem>
+                <SelectItem value="plug-in-hybrid">Plug-in Hybrid</SelectItem>
+                <SelectItem value="lpg">LPG</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="color">Color</Label>
+            <Input
+              id="color"
+              value={data.color}
+              onChange={(e) => handleInputChange('color', e.target.value)}
+              placeholder="e.g., Atlantis Grey"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="engineNumber">Engine Number</Label>
+            <Input
+              id="engineNumber"
+              value={data.engineNumber}
+              onChange={(e) => handleInputChange('engineNumber', e.target.value)}
+              placeholder="Engine number"
+              className="font-mono text-sm"
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Separator />
+
+      {/* Vehicle Identification */}
+      <Card className="p-4 border-muted/50 bg-muted/20">
+        <div className="flex items-center gap-2 mb-3">
+          <Settings className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-muted-foreground">Vehicle Identification</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="vin">Vehicle Identification Number (VIN)</Label>
+            <Input
+              id="vin"
+              value={data.vin}
+              onChange={(e) => handleInputChange('vin', e.target.value)}
+              placeholder="17-character VIN"
+              className="font-mono text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nvic">National Vehicle Identification Code (NVIC)</Label>
+            <Input
+              id="nvic"
+              value={data.nvic}
+              onChange={(e) => handleInputChange('nvic', e.target.value)}
+              placeholder="NVIC code"
+              className="font-mono text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="registration">Registration</Label>
+            <Input
+              id="registration"
+              value={data.registration}
+              onChange={(e) => handleInputChange('registration', e.target.value)}
+              placeholder="Registration number"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="state">State</Label>
+            <Select value={data.state} onValueChange={(value) => handleInputChange('state', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select state" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NSW">NSW</SelectItem>
+                <SelectItem value="VIC">VIC</SelectItem>
+                <SelectItem value="QLD">QLD</SelectItem>
+                <SelectItem value="WA">WA</SelectItem>
+                <SelectItem value="SA">SA</SelectItem>
+                <SelectItem value="TAS">TAS</SelectItem>
+                <SelectItem value="NT">NT</SelectItem>
+                <SelectItem value="ACT">ACT</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </Card>

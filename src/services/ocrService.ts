@@ -8,12 +8,30 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export interface ExtractedInvoiceData {
+  // Financial
+  totalCost: string;
+  deposit: string;
+  purchasePrice: string;
+  gstAmount: string;
+  
+  // Vehicle Details
+  assetType: string;
+  bodyType: string;
   vehicleMake: string;
   vehicleModel: string;
   vehicleYear: string;
+  transmission: string;
+  fuelType: string;
+  color: string;
+  engineNumber: string;
+  
+  // Identification
   vin: string;
-  purchasePrice: string;
-  gstAmount: string;
+  nvic: string;
+  registration: string;
+  state: string;
+  
+  // Vendor & Invoice
   vendorName: string;
   vendorAbn: string;
   purchaseDate: string;
@@ -162,10 +180,22 @@ export class OCRService {
       data.gstAmount = gstMatch[1];
     }
 
-    // Extract total/purchase price
-    const priceMatch = text.match(/(?:Total|Amount)[:\s]*\$?([\d,]+\.?\d*)/i);
+    // Extract total cost (look for Total incl GST or Total)
+    const totalMatch = text.match(/Total(?:\s+incl\s+GST)?[:\s]*\$?([\d,]+\.?\d*)/i);
+    if (totalMatch) {
+      data.totalCost = totalMatch[1];
+    }
+
+    // Extract purchase price/subtotal
+    const priceMatch = text.match(/(?:Sub\s*Total|Purchase\s*Price|Amount)[:\s]*\$?([\d,]+\.?\d*)/i);
     if (priceMatch) {
       data.purchasePrice = priceMatch[1];
+    }
+
+    // Extract deposit
+    const depositMatch = text.match(/(?:Deposit)[:\s]*\$?([\d,]+\.?\d*)/i);
+    if (depositMatch) {
+      data.deposit = depositMatch[1];
     }
 
     // Extract invoice number
@@ -182,13 +212,13 @@ export class OCRService {
     }
 
     // Extract VIN (17 characters, alphanumeric)
-    const vinMatch = text.match(/VIN[:\s]*([A-Z0-9]{17})/i);
+    const vinMatch = text.match(/(?:VIN|Chassis)[:\s]*([A-Z0-9]{17})/i);
     if (vinMatch) {
       data.vin = vinMatch[1];
     }
 
     // Extract vehicle make and model (look for common Australian car brands)
-    const vehicleMatch = text.match(/(Toyota|Holden|Ford|Mazda|Honda|Nissan|Hyundai|Kia|Subaru|Mitsubishi|BMW|Mercedes|Audi|Volkswagen)\s+([A-Za-z0-9\s]+)/i);
+    const vehicleMatch = text.match(/(Toyota|Holden|Ford|Mazda|Honda|Nissan|Hyundai|Kia|Subaru|Mitsubishi|BMW|Mercedes|Audi|Volkswagen|BYD)\s+([A-Za-z0-9\s]+)/i);
     if (vehicleMatch) {
       data.vehicleMake = vehicleMatch[1];
       data.vehicleModel = vehicleMatch[2].trim();
@@ -198,6 +228,48 @@ export class OCRService {
     const yearMatch = text.match(/(20\d{2})/);
     if (yearMatch) {
       data.vehicleYear = yearMatch[1];
+    }
+
+    // Extract body type
+    const bodyTypeMatch = text.match(/Body\s*Type[:\s]*(Sedan|Hatchback|SUV|Wagon|Coupe|Convertible|Ute|Van)/i);
+    if (bodyTypeMatch) {
+      data.bodyType = bodyTypeMatch[1].toLowerCase();
+    }
+
+    // Extract transmission
+    const transmissionMatch = text.match(/Transmission[:\s]*(Automatic|Manual|CVT)/i);
+    if (transmissionMatch) {
+      data.transmission = transmissionMatch[1].toLowerCase();
+    }
+
+    // Extract fuel type
+    const fuelMatch = text.match(/Fuel\s*Type[:\s]*(Electric|Petrol|Diesel|Hybrid|Plug-in\s*Hybrid|LPG)/i);
+    if (fuelMatch) {
+      data.fuelType = fuelMatch[1].toLowerCase().replace(/\s+/g, '-');
+    }
+
+    // Extract color
+    const colorMatch = text.match(/(?:Ext\.\s*Colour|Color|Paint)[:\s]*([A-Za-z0-9\s]+)/i);
+    if (colorMatch) {
+      data.color = colorMatch[1].trim();
+    }
+
+    // Extract engine number
+    const engineMatch = text.match(/Engine\s*No[:\s]*([A-Z0-9\s]+)/i);
+    if (engineMatch) {
+      data.engineNumber = engineMatch[1].trim();
+    }
+
+    // Extract registration
+    const regoMatch = text.match(/(?:Rego|Registration)\s*No[:\s]*([A-Z0-9]+)/i);
+    if (regoMatch) {
+      data.registration = regoMatch[1];
+    }
+
+    // Extract state
+    const stateMatch = text.match(/(?:Rego\s*State|State)[:\s]*(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)/i);
+    if (stateMatch) {
+      data.state = stateMatch[1].toUpperCase();
     }
 
     // Extract vendor name (look for business name patterns)

@@ -10,12 +10,30 @@ import { OCRService } from "@/services/ocrService";
 import { FileText, Car, DollarSign, Loader2 } from "lucide-react";
 
 interface InvoiceData {
+  // Financial
+  totalCost: string;
+  deposit: string;
+  purchasePrice: string;
+  gstAmount: string;
+  
+  // Vehicle Details
+  assetType: string;
+  bodyType: string;
   vehicleMake: string;
   vehicleModel: string;
   vehicleYear: string;
+  transmission: string;
+  fuelType: string;
+  color: string;
+  engineNumber: string;
+  
+  // Identification
   vin: string;
-  purchasePrice: string;
-  gstAmount: string;
+  nvic: string;
+  registration: string;
+  state: string;
+  
+  // Vendor & Invoice
   vendorName: string;
   vendorAbn: string;
   purchaseDate: string;
@@ -28,12 +46,23 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
+    totalCost: "",
+    deposit: "",
+    purchasePrice: "",
+    gstAmount: "",
+    assetType: "",
+    bodyType: "",
     vehicleMake: "",
     vehicleModel: "",
     vehicleYear: "",
+    transmission: "",
+    fuelType: "",
+    color: "",
+    engineNumber: "",
     vin: "",
-    purchasePrice: "",
-    gstAmount: "",
+    nvic: "",
+    registration: "",
+    state: "",
     vendorName: "",
     vendorAbn: "",
     purchaseDate: "",
