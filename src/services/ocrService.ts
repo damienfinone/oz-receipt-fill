@@ -1,4 +1,8 @@
 import { createWorker } from 'tesseract.js';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export interface ExtractedInvoiceData {
   vehicleMake: string;
@@ -23,14 +27,57 @@ export class OCRService {
     return this.worker;
   }
 
+  static async convertPdfToImage(file: File): Promise<File> {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    // Get the first page
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR quality
+    
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    // Render PDF page to canvas
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+      canvas: canvas
+    }).promise;
+    
+    // Convert canvas to blob then to File
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        const imageFile = new File([blob!], `${file.name}.png`, { type: 'image/png' });
+        resolve(imageFile);
+      }, 'image/png', 0.95);
+    });
+  }
+
+  static isPdfFile(file: File): boolean {
+    return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  }
+
   static async extractTextFromFile(file: File): Promise<string> {
     const worker = await this.initializeWorker();
     
     try {
       console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
       
+      let processedFile = file;
+      
+      // Convert PDF to image if necessary
+      if (this.isPdfFile(file)) {
+        console.log('Converting PDF to image for OCR...');
+        processedFile = await this.convertPdfToImage(file);
+        console.log('PDF converted to image:', processedFile.name);
+      }
+      
       // Convert file to image buffer for better compatibility
-      const imageBuffer = await file.arrayBuffer();
+      const imageBuffer = await processedFile.arrayBuffer();
       const { data: { text } } = await worker.recognize(new Uint8Array(imageBuffer));
       
       console.log('Extracted text length:', text.length);
@@ -106,13 +153,15 @@ export class OCRService {
 
   static async processInvoice(file: File, onProgress?: (progress: number) => void): Promise<Partial<ExtractedInvoiceData>> {
     try {
-      onProgress?.(25);
+      onProgress?.(10);
+      
+      // Extract text with different progress indicators for PDF vs image
       const text = await this.extractTextFromFile(file);
-      
       onProgress?.(75);
-      const extractedData = this.parseAustralianInvoice(text);
       
+      const extractedData = this.parseAustralianInvoice(text);
       onProgress?.(100);
+      
       return extractedData;
     } catch (error) {
       console.error('Invoice processing failed:', error);
