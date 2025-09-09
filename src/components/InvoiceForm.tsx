@@ -5,6 +5,8 @@ import { Separator } from "@/components/ui/separator";
 import { ConfidenceIndicator } from "@/components/ConfidenceIndicator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Car, Building, Receipt, Calendar, DollarSign, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { FraudDetectionService } from '@/services/fraudDetectionService';
 
 interface InvoiceData {
   // Financial
@@ -32,6 +34,16 @@ interface InvoiceData {
   nvic: string;
   registration: string;
   state: string;
+  
+  // Fraud Detection
+  fraudScore?: number;
+  fraudIndicators?: Array<{
+    type: 'critical' | 'warning' | 'info';
+    field: string;
+    message: string;
+    severity: number;
+  }>;
+  riskLevel?: 'low' | 'medium' | 'high';
   
   // Vendor & Invoice
   vendorName: string;
@@ -73,6 +85,24 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
     return value;
   };
 
+  const getFieldRiskBorder = (fieldName: string) => {
+    if (!data.fraudIndicators) return '';
+    const riskLevel = FraudDetectionService.getFieldRiskLevel(fieldName, data.fraudIndicators);
+    switch (riskLevel) {
+      case 'high': return 'border-destructive border-2';
+      case 'medium': return 'border-warning border-2';
+      case 'low': return '';
+      default: return '';
+    }
+  };
+
+  const getFieldTooltip = (fieldName: string) => {
+    if (!data.fraudIndicators) return null;
+    const fieldIndicators = data.fraudIndicators.filter(i => i.field === fieldName);
+    if (fieldIndicators.length === 0) return null;
+    return fieldIndicators.map(i => i.message).join('; ');
+  };
+
   return (
     <div className="space-y-6">
       {/* Financial Information */}
@@ -92,6 +122,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.totalCost}
               onChange={(e) => handleInputChange('totalCost', e.target.value)}
               placeholder="56,180.66"
+              className={cn(
+                fieldsWithLowConfidence?.includes('totalCost') && "border-destructive",
+                getFieldRiskBorder('totalCost')
+              )}
+              title={getFieldTooltip('totalCost') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('totalCost', formatted);
@@ -105,6 +140,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.deposit}
               onChange={(e) => handleInputChange('deposit', e.target.value)}
               placeholder="5,000.00"
+              className={cn(
+                fieldsWithLowConfidence?.includes('deposit') && "border-destructive",
+                getFieldRiskBorder('deposit')
+              )}
+              title={getFieldTooltip('deposit') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('deposit', formatted);
@@ -118,6 +158,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.tradeInValue}
               onChange={(e) => handleInputChange('tradeInValue', e.target.value)}
               placeholder="15,000.00"
+              className={cn(
+                fieldsWithLowConfidence?.includes('tradeInValue') && "border-destructive",
+                getFieldRiskBorder('tradeInValue')
+              )}
+              title={getFieldTooltip('tradeInValue') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('tradeInValue', formatted);
@@ -131,6 +176,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.balanceOwing}
               onChange={(e) => handleInputChange('balanceOwing', e.target.value)}
               placeholder="36,180.66"
+              className={cn(
+                fieldsWithLowConfidence?.includes('balanceOwing') && "border-destructive",
+                getFieldRiskBorder('balanceOwing')
+              )}
+              title={getFieldTooltip('balanceOwing') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('balanceOwing', formatted);
@@ -157,6 +207,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.gstAmount}
               onChange={(e) => handleInputChange('gstAmount', e.target.value)}
               placeholder="4,944.13"
+              className={cn(
+                fieldsWithLowConfidence?.includes('gstAmount') && "border-destructive",
+                getFieldRiskBorder('gstAmount')
+              )}
+              title={getFieldTooltip('gstAmount') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('gstAmount', formatted);
@@ -301,6 +356,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.odometer}
               onChange={(e) => handleInputChange('odometer', e.target.value)}
               placeholder="e.g., 45,000"
+              className={cn(
+                fieldsWithLowConfidence?.includes('odometer') && "border-destructive",
+                getFieldRiskBorder('odometer')
+              )}
+              title={getFieldTooltip('odometer') || undefined}
             />
           </div>
         </div>
@@ -322,7 +382,12 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.vin}
               onChange={(e) => handleInputChange('vin', e.target.value)}
               placeholder="17-character VIN"
-              className="font-mono text-sm"
+              className={cn(
+                "font-mono text-sm",
+                fieldsWithLowConfidence?.includes('vin') && "border-destructive",
+                getFieldRiskBorder('vin')
+              )}
+              title={getFieldTooltip('vin') || undefined}
             />
           </div>
           <div className="space-y-2">
@@ -390,6 +455,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.vendorAbn}
               onChange={(e) => handleInputChange('vendorAbn', e.target.value)}
               placeholder="12 345 678 901"
+              className={cn(
+                fieldsWithLowConfidence?.includes('vendorAbn') && "border-destructive",
+                getFieldRiskBorder('vendorAbn')
+              )}
+              title={getFieldTooltip('vendorAbn') || undefined}
             />
           </div>
         </div>
@@ -420,6 +490,11 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               type="date"
               value={data.purchaseDate}
               onChange={(e) => handleInputChange('purchaseDate', e.target.value)}
+              className={cn(
+                fieldsWithLowConfidence?.includes('purchaseDate') && "border-destructive",
+                getFieldRiskBorder('purchaseDate')
+              )}
+              title={getFieldTooltip('purchaseDate') || undefined}
             />
           </div>
         </div>
@@ -454,10 +529,10 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
       <Separator />
 
       {/* Bank Details */}
-      <Card className="p-4 border-secondary/20 bg-secondary/5">
+      <Card className="p-4 border-muted/50 bg-muted/20">
         <div className="flex items-center gap-2 mb-3">
-          <DollarSign className="h-4 w-4 text-secondary" />
-          <h3 className="font-semibold text-secondary">Bank Details</h3>
+          <Receipt className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-muted-foreground">Bank Details</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -466,15 +541,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               id="bankName"
               value={data.bankName}
               onChange={(e) => handleInputChange('bankName', e.target.value)}
-              placeholder="ANZ, CBA, Westpac, NAB"
+              placeholder="e.g., Commonwealth Bank"
             />
-            {fieldsWithLowConfidence.includes('bankName') && (
-              <ConfidenceIndicator 
-                fieldName="bankName" 
-                confidence={confidence}
-                isLowConfidence={fieldsWithLowConfidence.includes('bankName')}
-              />
-            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="accountName">Account Name</Label>
@@ -484,13 +552,6 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('accountName', e.target.value)}
               placeholder="Account holder name"
             />
-            {fieldsWithLowConfidence.includes('accountName') && (
-              <ConfidenceIndicator 
-                fieldName="accountName" 
-                confidence={confidence}
-                isLowConfidence={fieldsWithLowConfidence.includes('accountName')}
-              />
-            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="bsb">BSB</Label>
@@ -499,14 +560,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.bsb}
               onChange={(e) => handleInputChange('bsb', e.target.value)}
               placeholder="123-456"
+              className="font-mono text-sm"
             />
-            {fieldsWithLowConfidence.includes('bsb') && (
-              <ConfidenceIndicator 
-                fieldName="bsb" 
-                confidence={confidence}
-                isLowConfidence={fieldsWithLowConfidence.includes('bsb')}
-              />
-            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="accountNumber">Account Number</Label>
@@ -514,15 +569,9 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               id="accountNumber"
               value={data.accountNumber}
               onChange={(e) => handleInputChange('accountNumber', e.target.value)}
-              placeholder="123456789"
+              placeholder="Account number"
+              className="font-mono text-sm"
             />
-            {fieldsWithLowConfidence.includes('accountNumber') && (
-              <ConfidenceIndicator 
-                fieldName="accountNumber" 
-                confidence={confidence}
-                isLowConfidence={fieldsWithLowConfidence.includes('accountNumber')}
-              />
-            )}
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="paymentReference">Payment Reference</Label>
@@ -530,15 +579,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               id="paymentReference"
               value={data.paymentReference}
               onChange={(e) => handleInputChange('paymentReference', e.target.value)}
-              placeholder="Payment reference code"
+              placeholder="Payment reference or description"
             />
-            {fieldsWithLowConfidence.includes('paymentReference') && (
-              <ConfidenceIndicator 
-                fieldName="paymentReference" 
-                confidence={confidence}
-                isLowConfidence={fieldsWithLowConfidence.includes('paymentReference')}
-              />
-            )}
           </div>
         </div>
       </Card>

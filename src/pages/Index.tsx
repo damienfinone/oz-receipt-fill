@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { DocumentPreview } from "@/components/DocumentPreview";
+import { FraudScoreIndicator } from "@/components/FraudScoreIndicator";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { OCRService } from "@/services/ocrService";
-import { FileText, Car, DollarSign, Loader2 } from "lucide-react";
+import { FraudDetectionService } from "@/services/fraudDetectionService";
+import { FileText, Car, DollarSign, Loader2, Download } from "lucide-react";
 
 interface InvoiceData {
   // Financial
@@ -35,6 +38,16 @@ interface InvoiceData {
   nvic: string;
   registration: string;
   state: string;
+  
+  // Fraud Detection
+  fraudScore?: number;
+  fraudIndicators?: Array<{
+    type: 'critical' | 'warning' | 'info';
+    field: string;
+    message: string;
+    severity: number;
+  }>;
+  riskLevel?: 'low' | 'medium' | 'high';
   
   // Vendor & Invoice
   vendorName: string;
@@ -112,8 +125,18 @@ const Index = () => {
         (progress) => setProcessingProgress(progress)
       );
       
-      // Update form with extracted data
-      setInvoiceData(prev => ({ ...prev, ...result.data }));
+      // Run fraud detection analysis
+      const fraudAnalysis = FraudDetectionService.analyzeInvoice(result.data, result.confidence);
+      
+      // Update form with extracted data and fraud analysis
+      const dataWithFraud = {
+        ...result.data,
+        fraudScore: fraudAnalysis.fraudScore,
+        fraudIndicators: fraudAnalysis.fraudIndicators,
+        riskLevel: fraudAnalysis.riskLevel
+      };
+      
+      setInvoiceData(prev => ({ ...prev, ...dataWithFraud }));
       setConfidence(result.confidence);
       setFieldsWithLowConfidence(result.fieldsWithLowConfidence);
       
@@ -125,6 +148,21 @@ const Index = () => {
         title: "Document processed successfully",
         description: accuracyText,
       });
+      
+      // Show fraud analysis results
+      if (fraudAnalysis.riskLevel === 'high') {
+        toast({
+          title: "High fraud risk detected",
+          description: `Fraud score: ${fraudAnalysis.fraudScore}/100. Please review carefully.`,
+          variant: "destructive",
+        });
+      } else if (fraudAnalysis.riskLevel === 'medium') {
+        toast({
+          title: "Medium fraud risk detected",
+          description: `Fraud score: ${fraudAnalysis.fraudScore}/100. Some issues found.`,
+          variant: "default",
+        });
+      }
       
       if (result.fieldsWithLowConfidence.length > 0) {
         toast({
@@ -146,8 +184,18 @@ const Index = () => {
     }
   };
 
-  const handleDataUpdate = (data: Partial<InvoiceData>) => {
-    setInvoiceData(prev => ({ ...prev, ...data }));
+  const handleDataUpdate = (updatedData: Partial<InvoiceData>) => {
+    const newData = { ...invoiceData, ...updatedData };
+    
+    // Re-run fraud detection when data changes
+    const fraudAnalysis = FraudDetectionService.analyzeInvoice(newData, confidence);
+    
+    setInvoiceData({
+      ...newData,
+      fraudScore: fraudAnalysis.fraudScore,
+      fraudIndicators: fraudAnalysis.fraudIndicators,
+      riskLevel: fraudAnalysis.riskLevel
+    });
   };
 
   const handleExport = () => {
@@ -175,7 +223,7 @@ const Index = () => {
                 Australian Vehicle Invoice Processor
               </h1>
               <p className="text-muted-foreground">
-                Extract tax invoice data from PDFs and images automatically
+                Extract tax invoice data from PDFs and images with fraud detection
               </p>
             </div>
           </div>
@@ -211,18 +259,33 @@ const Index = () => {
                   <DollarSign className="h-5 w-5 text-success" />
                   <h2 className="text-xl font-semibold">Invoice Details</h2>
                 </div>
-                {Object.values(invoiceData).some(value => value !== "") && (
-                  <Button variant="success" onClick={handleExport}>
-                    Export Data
-                  </Button>
-                )}
               </div>
+
+              {invoiceData.fraudScore !== undefined && (
+                <>
+                  <FraudScoreIndicator
+                    fraudScore={invoiceData.fraudScore}
+                    riskLevel={invoiceData.riskLevel || 'medium'}
+                    fraudIndicators={invoiceData.fraudIndicators || []}
+                    className="mb-6"
+                  />
+                  <Separator className="my-6" />
+                </>
+              )}
+
               <InvoiceForm 
                 data={invoiceData} 
                 onDataUpdate={handleDataUpdate}
                 confidence={confidence}
                 fieldsWithLowConfidence={fieldsWithLowConfidence}
               />
+              
+              <Separator className="my-6" />
+              
+              <Button onClick={handleExport} className="w-full mb-4" disabled={!uploadedFile}>
+                <Download className="w-4 h-4 mr-2" />
+                Export Data
+              </Button>
             </Card>
 
             {/* Processing Status */}
@@ -232,14 +295,15 @@ const Index = () => {
                   <div className="flex items-center gap-2 text-primary">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <p className="text-sm font-medium">
-                      Processing document with AI-enhanced extraction...
+                      Processing document with AI-enhanced extraction and fraud detection...
                     </p>
                   </div>
                   <Progress value={processingProgress} className="w-full" />
                   <p className="text-xs text-muted-foreground">
                     {processingProgress < 25 ? 'Initializing OCR engine...' :
-                     processingProgress < 75 ? 'Extracting text from document...' :
-                     'Parsing invoice data...'}
+                     processingProgress < 50 ? 'Extracting text from document...' :
+                     processingProgress < 75 ? 'Parsing invoice data...' :
+                     'Running fraud detection analysis...'}
                   </p>
                 </div>
               </Card>
@@ -250,7 +314,7 @@ const Index = () => {
                 <div className="flex items-center gap-2 text-success">
                   <div className="h-2 w-2 rounded-full bg-success" />
                   <p className="text-sm font-medium">
-                    Document processed successfully! Review and edit the extracted data.
+                    Document processed successfully! Review the extracted data and fraud analysis.
                   </p>
                 </div>
               </Card>
