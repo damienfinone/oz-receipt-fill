@@ -1,11 +1,11 @@
-interface FraudIndicator {
+export interface FraudIndicator {
   type: 'critical' | 'warning' | 'info' | 'metadata-tampering' | 'visual-inconsistency' | 'text-layer-mismatch';
   field: string;
   message: string;
   severity: number; // 1-10, higher is more severe
 }
 
-interface FraudAnalysis {
+export interface FraudAnalysis {
   fraudScore: number; // 0-100, higher is more trustworthy
   fraudIndicators: FraudIndicator[];
   riskLevel: 'low' | 'medium' | 'high';

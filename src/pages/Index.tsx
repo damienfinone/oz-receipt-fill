@@ -7,7 +7,7 @@ import { FraudScoreIndicator } from "@/components/FraudScoreIndicator";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { JobTracker } from "@/components/JobTracker";
 import { DocumentProcessor } from "@/services/documentProcessor";
-import { FraudDetectionService, FraudAnalysis } from "@/services/fraudDetectionService";
+import { FraudDetectionService, FraudAnalysis, FraudIndicator } from "@/services/fraudDetectionService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2, Zap, Clock } from "lucide-react";
@@ -17,6 +17,8 @@ interface InvoiceData {
   // Financial
   totalCost: string;
   deposit: string;
+  tradeInValue: string;
+  balanceOwing: string;
   purchasePrice: string;
   gstAmount: string;
   
@@ -30,6 +32,7 @@ interface InvoiceData {
   fuelType: string;
   color: string;
   engineNumber: string;
+  odometer: string;
   
   // Identification
   vin: string;
@@ -39,12 +42,7 @@ interface InvoiceData {
   
   // Fraud Analysis
   fraudScore: number;
-  fraudIndicators: Array<{
-    type: string;
-    field: string;
-    message: string;
-    severity: number;
-  }>;
+  fraudIndicators: FraudIndicator[];
   riskLevel: 'low' | 'medium' | 'high';
   
   // Vendor & Invoice
@@ -53,11 +51,15 @@ interface InvoiceData {
   purchaseDate: string;
   invoiceNumber: string;
   
-  // Bank Details (placeholders for future use)
+  // Customer Details
+  deliverTo: string;
+  
+  // Bank Details
   bankName: string;
-  bsbNumber: string;
-  accountNumber: string;
   accountName: string;
+  bsb: string;
+  accountNumber: string;
+  paymentReference: string;
 }
 
 const Index = () => {
@@ -129,6 +131,8 @@ const Index = () => {
       // Financial
       totalCost: data.totalCost || '',
       deposit: data.deposit || '',
+      tradeInValue: data.tradeInValue || '',
+      balanceOwing: data.balanceOwing || '',
       purchasePrice: data.purchasePrice || '',
       gstAmount: data.gstAmount || '',
       
@@ -142,6 +146,7 @@ const Index = () => {
       fuelType: data.fuelType || '',
       color: data.color || '',
       engineNumber: data.engineNumber || '',
+      odometer: data.odometer || '',
       
       // Identification
       vin: data.vin || '',
@@ -160,11 +165,15 @@ const Index = () => {
       purchaseDate: data.purchaseDate || '',
       invoiceNumber: data.invoiceNumber || '',
       
-      // Bank Details (placeholders for future use)
-      bankName: '',
-      bsbNumber: '',
-      accountNumber: '',
-      accountName: ''
+      // Customer Details
+      deliverTo: data.deliverTo || '',
+      
+      // Bank Details
+      bankName: data.bankName || '',
+      accountName: data.accountName || '',
+      bsb: data.bsb || '',
+      accountNumber: data.accountNumber || '',
+      paymentReference: data.paymentReference || ''
     });
     
     setConfidence(confidenceScore);
@@ -300,9 +309,8 @@ const Index = () => {
                   <CardContent>
                     <InvoiceForm 
                       data={invoiceData}
-                      onChange={handleDataUpdate}
+                      onDataUpdate={handleDataUpdate}
                       fieldsWithLowConfidence={fieldsWithLowConfidence}
-                      disabled={false}
                     />
                   </CardContent>
                 </Card>
