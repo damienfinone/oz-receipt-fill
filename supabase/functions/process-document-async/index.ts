@@ -73,6 +73,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             model: 'gpt-4o-mini',
+            service_tier: 'priority',
             messages: [
               {
                 role: 'system',
@@ -115,7 +116,7 @@ Return ONLY a valid JSON object with these fields. Set any missing fields to emp
                 content: text
               }
             ],
-            max_tokens: 1000,
+            max_tokens: 1500,
             temperature: 0.1
           }),
         });

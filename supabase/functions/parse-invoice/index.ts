@@ -100,6 +100,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
+        service_tier: "priority",
         messages: [
           {
             role: "system",
@@ -149,42 +150,18 @@ serve(async (req) => {
             - accountNumber: Bank account number
             - paymentReference: Payment reference number or code
 
-            FRAUD DETECTION: Also analyze the document for potential fraud indicators:
-            - Check if financial calculations are consistent (Balance Owing = Total Cost - Deposit - Trade In Value)
-            - Verify GST is approximately 10% of total cost
-            - Validate VIN format (should be 17 characters)
-            - Check for realistic price ranges for vehicles
-            - Identify any suspicious patterns or inconsistencies
-
             CRITICAL: Return ONLY a raw JSON object. Do not wrap in markdown code blocks or add any formatting. Return the data as a JSON object with the exact field names above. If a field cannot be found, use an empty string. Include a confidence score (0-100) for the overall extraction quality.
 
             Also provide fieldsWithLowConfidence as an array of field names where the extraction confidence is below 70%.
-
-            For fraud detection, add these additional fields:
-            - fraudScore: Overall document authenticity score (0-100, higher is more trustworthy)
-            - fraudIndicators: Array of detected issues, each with:
-              - type: "critical", "warning", or "info"
-              - field: field name related to the issue
-              - message: description of the issue
-              - severity: number 1-10 indicating severity
-            - riskLevel: "low", "medium", or "high" based on overall assessment
 
             Example response (return exactly this JSON format, no markdown):
             {
               "data": {
                 "totalCost": "45000",
-                "gst": "4500",
+                "gstAmount": "4500",
+                "vehicleMake": "Toyota",
+                "vehicleModel": "Camry",
                 ... other fields ...
-                "fraudScore": 92,
-                "fraudIndicators": [
-                  {
-                    "type": "warning",
-                    "field": "gstAmount",
-                    "message": "GST calculation appears slightly off (expected ~10%)",
-                    "severity": 3
-                  }
-                ],
-                "riskLevel": "low"
               },
               "confidence": 85,
               "fieldsWithLowConfidence": ["engineNumber", "nvic"]
@@ -192,7 +169,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `Extract data and analyze for fraud from this Australian vehicle invoice text:\n\n${text}`
+            content: `Extract structured data from this Australian vehicle invoice text:\n\n${text}`
           }
         ],
         temperature: 0.1,

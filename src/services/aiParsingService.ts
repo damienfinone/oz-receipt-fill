@@ -29,6 +29,7 @@ export class AIParsingService {
     try {
       const completion = await this.openai.chat.completions.create({
         model: "gpt-4o-mini",
+        service_tier: "priority",
         messages: [
           {
             role: "system",
@@ -87,7 +88,7 @@ export class AIParsingService {
           }
         ],
         temperature: 0.1,
-        max_tokens: 1000
+        max_tokens: 1500
       });
 
       const responseText = completion.choices[0]?.message?.content;
