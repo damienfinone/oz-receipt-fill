@@ -279,12 +279,12 @@ const Index = () => {
                 </div>
               )}
               
-              {processingTime && !isProcessing && (
+              {processingTime && !isProcessing && uploadedFile && Object.values(invoiceData).some(value => value !== "") && (
                 <div className="mt-4 p-3 border border-success/20 bg-success/5 rounded-lg">
                   <div className="flex items-center gap-2 text-success">
                     <div className="h-2 w-2 rounded-full bg-success" />
                     <p className="text-sm font-medium">
-                      Processing completed in {processingTime.toFixed(1)} seconds
+                      Document processed successfully in {processingTime.toFixed(1)} seconds! Review the extracted data and fraud analysis.
                     </p>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ const Index = () => {
               </Button>
             </Card>
 
-            {uploadedFile && !isProcessing && Object.values(invoiceData).some(value => value !== "") && (
+            {uploadedFile && !isProcessing && Object.values(invoiceData).some(value => value !== "") && !processingTime && (
               <Card className="p-4 border-success/20 bg-success/5">
                 <div className="flex items-center gap-2 text-success">
                   <div className="h-2 w-2 rounded-full bg-success" />
