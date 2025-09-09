@@ -131,9 +131,9 @@ const Index = () => {
       );
       
       // Calculate processing time for text extraction only (exclude fraud analysis)
-      if (uploadStartTime) {
+      if (startTime) {
         const endTime = Date.now();
-        const timeTaken = (endTime - uploadStartTime) / 1000; // Convert to seconds
+        const timeTaken = (endTime - startTime) / 1000; // Convert to seconds
         setProcessingTime(timeTaken);
       }
       

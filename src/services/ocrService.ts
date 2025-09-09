@@ -53,40 +53,13 @@ export class OCRService {
     return this.worker;
   }
 
-  static async extractTextFromPdf(file: File): Promise<{ text: string | null; pdfDoc: any }> {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
-      let fullText = '';
-      // Extract text from all pages (most invoices are single page)
-      const numPages = Math.min(pdf.numPages, 3); // Limit to first 3 pages for speed
-      
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n';
-      }
-      
-      const text = fullText.trim();
-      // Return both text and PDF document for potential reuse
-      return { 
-        text: text.length > 100 ? text : null, // Proper threshold for meaningful text
-        pdfDoc: pdf 
-      };
-    } catch (error) {
-      console.warn('PDF text extraction failed:', error);
-      return { text: null, pdfDoc: null };
-    }
-  }
-
-  static async convertPdfToImage(pdfDoc: any, fastMode: boolean = false): Promise<File> {
+  static async convertPdfToImage(file: File, fastMode: boolean = false): Promise<File> {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
     // Get the first page
-    const page = await pdfDoc.getPage(1);
-    const scale = fastMode ? 1.0 : 1.5; // Further reduced scales for speed
+    const page = await pdf.getPage(1);
+    const scale = fastMode ? 1.5 : 2.5; // Optimized scales for speed vs quality
     const viewport = page.getViewport({ scale });
     
     // Create canvas
@@ -105,9 +78,9 @@ export class OCRService {
     // Convert canvas to blob then to File
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
-        const imageFile = new File([blob!], 'converted.png', { type: 'image/png' });
+        const imageFile = new File([blob!], `${file.name}.png`, { type: 'image/png' });
         resolve(imageFile);
-      }, 'image/png', 0.85); // Lower quality for faster processing
+      }, 'image/png', 0.95);
     });
   }
 
@@ -164,37 +137,32 @@ export class OCRService {
   }
 
   static async extractTextFromFile(file: File, usePreprocessing: boolean = true, fastMode: boolean = false): Promise<string> {
+    const worker = await this.initializeWorker();
+    
     try {
-      const startTime = Date.now();
       console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
       
-      // FAST PATH: Try PDF text layer extraction first (if PDF)
+      let processedFile = file;
+      
+      // Convert PDF to image if necessary
       if (this.isPdfFile(file)) {
-        console.log('Attempting fast PDF text extraction...');
-        const { text: pdfText, pdfDoc } = await this.extractTextFromPdf(file);
-        if (pdfText) {
-          console.log(`Fast PDF text extraction successful in ${Date.now() - startTime}ms, text length:`, pdfText.length);
-          return pdfText; // Return immediately, no OCR needed
-        }
-        
-        // Only do OCR if no text layer found
-        console.log('PDF has no meaningful text layer, converting to image for OCR...');
-        const worker = await this.initializeWorker();
-        const processedFile = await this.convertPdfToImage(pdfDoc, true); // Always use fast mode
-        console.log(`PDF converted to image in ${Date.now() - startTime}ms`);
-        
-        const imageBuffer = await processedFile.arrayBuffer();
-        const { data: { text } } = await worker.recognize(new Uint8Array(imageBuffer));
-        console.log(`OCR completed in ${Date.now() - startTime}ms, text length:`, text.length);
-        return text;
+        console.log('Converting PDF to image for OCR...');
+        processedFile = await this.convertPdfToImage(file, fastMode);
+        console.log('PDF converted to image:', processedFile.name);
       }
       
-      // IMAGE FILE processing - fast mode only
-      const worker = await this.initializeWorker();
-      const imageBuffer = await file.arrayBuffer();
-      const { data: { text } } = await worker.recognize(new Uint8Array(imageBuffer));
+      // Convert file to image buffer
+      let imageBuffer = await processedFile.arrayBuffer();
       
-      console.log(`Image OCR completed in ${Date.now() - startTime}ms, text length:`, text.length);
+      // Apply image preprocessing if enabled (skip in fast mode for speed)
+      if (usePreprocessing && !fastMode) {
+        console.log('Applying image preprocessing...');
+        imageBuffer = await this.preprocessImage(imageBuffer);
+      }
+      
+      const { data: { text, confidence } } = await worker.recognize(new Uint8Array(imageBuffer));
+      
+      console.log('Extracted text length:', text.length, 'OCR confidence:', confidence);
       return text;
     } catch (error) {
       console.error('OCR extraction failed:', error);
@@ -332,13 +300,24 @@ export class OCRService {
     try {
       onProgress?.(10);
       
-      // Fast single-pass text extraction
-      console.log('Starting text extraction...');
-      const extractionStart = Date.now();
+      // Start document analysis in parallel (non-blocking)
+      let documentAnalysisPromise: Promise<any> | null = null;
+      try {
+        const { DocumentAnalysisService } = await import('./documentAnalysisService');
+        documentAnalysisPromise = DocumentAnalysisService.analyzeDocument(file);
+      } catch (error) {
+        console.warn('Document analysis service not available:', error);
+      }
       
-      const text = await this.extractTextFromFile(file, false, true);
-      console.log(`Text extraction completed in ${Date.now() - extractionStart}ms, text length:`, text.length);
-      onProgress?.(35);
+      // Start with fast extraction, fallback to high-quality if needed
+      let text = await this.extractTextFromFile(file, false, true); // Fast mode first
+      
+      // If extraction quality is poor, retry with full processing
+      if (text.length < 100) {
+        console.log('Fast extraction yielded poor results, retrying with full processing...');
+        text = await this.extractTextFromFile(file, true, false);
+      }
+      onProgress?.(50);
       
       console.log('Using AI-enhanced parsing via edge function...');
       
@@ -358,9 +337,33 @@ export class OCRService {
         
         if (aiResult && aiResult.confidence > 0) {
           console.log('AI parsing successful:', aiResult);
+          console.log('AI data structure:', JSON.stringify(aiResult.data, null, 2));
+          
+          // Wait for document analysis to complete and include it
+          let documentAnalysis = null;
+          if (documentAnalysisPromise) {
+            try {
+              documentAnalysis = await documentAnalysisPromise;
+              
+              // Compare OCR text with text layer if available
+              if (documentAnalysis?.textLayerText) {
+                const { DocumentAnalysisService } = await import('./documentAnalysisService');
+                const comparison = DocumentAnalysisService.compareOcrWithTextLayer(
+                  text, 
+                  documentAnalysis.textLayerText
+                );
+                documentAnalysis.suspiciousIndicators.push(...comparison.indicators);
+              }
+            } catch (error) {
+              console.warn('Document analysis failed:', error);
+            }
+          }
+          
+          onProgress?.(90);
           onProgress?.(100);
           return {
             ...aiResult,
+            documentAnalysis,
             ocrText: text
           };
         }
@@ -372,6 +375,26 @@ export class OCRService {
       console.log('Using local regex parsing...');
       const extractedData = this.parseAustralianInvoice(text);
       
+      // Wait for document analysis to complete
+      let documentAnalysis = null;
+      if (documentAnalysisPromise) {
+        try {
+          documentAnalysis = await documentAnalysisPromise;
+          
+          // Compare OCR text with text layer if available
+          if (documentAnalysis?.textLayerText) {
+            const { DocumentAnalysisService } = await import('./documentAnalysisService');
+            const comparison = DocumentAnalysisService.compareOcrWithTextLayer(
+              text, 
+              documentAnalysis.textLayerText
+            );
+            documentAnalysis.suspiciousIndicators.push(...comparison.indicators);
+          }
+        } catch (error) {
+          console.warn('Document analysis failed:', error);
+        }
+      }
+      
       const result = {
         data: extractedData,
         confidence: 60,
@@ -379,9 +402,11 @@ export class OCRService {
           !extractedData[key as keyof ExtractedInvoiceData] || 
           String(extractedData[key as keyof ExtractedInvoiceData]).length < 2
         ),
+        documentAnalysis,
         ocrText: text
       };
       
+      onProgress?.(90);
       onProgress?.(100);
       return result;
     } catch (error) {
