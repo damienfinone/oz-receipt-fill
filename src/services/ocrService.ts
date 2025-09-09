@@ -309,6 +309,8 @@ export class OCRService {
         }
         
         if (aiResult && aiResult.confidence > 0) {
+          console.log('AI parsing successful:', aiResult);
+          console.log('AI data structure:', JSON.stringify(aiResult.data, null, 2));
           onProgress?.(90);
           onProgress?.(100);
           return aiResult;

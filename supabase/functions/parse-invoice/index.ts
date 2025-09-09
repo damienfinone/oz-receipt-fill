@@ -83,18 +83,15 @@ serve(async (req) => {
             content: `You are an expert at extracting structured data from Australian vehicle invoices and tax invoices. 
             
             Extract the following information from the invoice text and return a JSON response with:
-            1. The extracted data in the specified format
+            1. The extracted data in a FLAT structure (not grouped)
             2. A confidence score (0-100) for the overall extraction
             3. A list of field names where confidence is below 80%
 
-            Expected fields:
-            Financial:
-            - totalCost: Total cost including all charges (numbers only, no currency symbols)
-            - deposit: Deposit amount if mentioned (numbers only)
-            - purchasePrice: Purchase price/subtotal (numbers only, no currency symbols)
-            - gstAmount: GST amount (numbers only)
-            
-            Vehicle Details:
+            Extract these fields as STRING values in a flat structure:
+            - totalCost: Total cost including all charges (as string, numbers only, no currency symbols)
+            - deposit: Deposit amount if mentioned (as string, numbers only)
+            - purchasePrice: Purchase price/subtotal (as string, numbers only, no currency symbols)
+            - gstAmount: GST amount (as string, numbers only)
             - assetType: Type of asset (motor-vehicle, motorcycle, etc.)
             - bodyType: Body type (sedan, hatchback, SUV, etc.)
             - vehicleMake: Car manufacturer (Toyota, Holden, Ford, BYD, etc.)
@@ -104,14 +101,10 @@ serve(async (req) => {
             - fuelType: Fuel type (electric, petrol, diesel, hybrid, etc.)
             - color: Vehicle color
             - engineNumber: Engine number if available
-            
-            Identification:
             - vin: Vehicle Identification Number (17 characters)
             - nvic: National Vehicle Identification Code
             - registration: Registration number
             - state: Australian state (NSW, VIC, QLD, WA, SA, TAS, NT, ACT)
-            
-            Vendor & Invoice:
             - vendorName: Business/dealer name
             - vendorAbn: Australian Business Number (format: XX XXX XXX XXX)
             - purchaseDate: Date in YYYY-MM-DD format
@@ -122,9 +115,13 @@ serve(async (req) => {
             - ABN format: XX XXX XXX XXX (11 digits with spaces)
             - Currency amounts: remove $ and commas, keep decimal points
             
-            Return ONLY a JSON object with this structure:
+            Return ONLY a JSON object with this FLAT structure (do not group fields):
             {
-              "data": { extracted fields here },
+              "data": {
+                "totalCost": "string value",
+                "assetType": "string value", 
+                "vehicleMake": "string value"
+              },
               "confidence": number,
               "fieldsWithLowConfidence": ["fieldName1", "fieldName2"]
             }`
