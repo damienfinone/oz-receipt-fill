@@ -93,12 +93,12 @@ serve(async (req) => {
             - purchasePrice: Purchase price/subtotal (as string, numbers only, no currency symbols)
             - gstAmount: GST amount (as string, numbers only)
             - assetType: Type of asset (motor-vehicle, motorcycle, etc.)
-            - bodyType: Body type (sedan, hatchback, SUV, etc.)
-            - vehicleMake: Car manufacturer (Toyota, Holden, Ford, BYD, etc.)
-            - vehicleModel: Model name (Camry, SEAL, etc.)
+            - bodyType: Body type (sedan, hatchback, SUV, wagon, coupe, convertible, ute, van, truck, etc.). If not explicitly stated, infer from vehicleMake, vehicleModel, and vehicleYear
+            - vehicleMake: Car manufacturer (Toyota, Holden, Ford, BYD, Tesla, BMW, Mercedes, etc.)
+            - vehicleModel: Model name (Camry, SEAL, Model 3, X5, etc.)
             - vehicleYear: Year (YYYY format)
-            - transmission: Transmission type (automatic, manual, etc.)
-            - fuelType: Fuel type (electric, petrol, diesel, hybrid, etc.)
+            - transmission: Transmission type (automatic, manual, CVT, dual-clutch, etc.). If not explicitly stated, infer from vehicleMake, vehicleModel, and vehicleYear (most modern cars are automatic)
+            - fuelType: Fuel type (electric, petrol, diesel, hybrid, plug-in hybrid, etc.). If not explicitly stated, infer from vehicleMake, vehicleModel, and vehicleYear (e.g., BYD SEAL = electric, Tesla = electric)
             - color: Vehicle color
             - engineNumber: Engine number if available
             - vin: Vehicle Identification Number (17 characters)
@@ -110,6 +110,12 @@ serve(async (req) => {
             - purchaseDate: Date in YYYY-MM-DD format
             - invoiceNumber: Invoice/receipt number
 
+            INFERENCE RULES:
+            - BYD models (SEAL, ATTO 3, DOLPHIN) = Electric vehicle, typically sedan/SUV/hatchback respectively
+            - Tesla models = Electric vehicle, Model 3/S = sedan, Model X/Y = SUV
+            - Most vehicles 2020+ are automatic transmission unless specified as manual
+            - Hybrid vehicles often have "Hybrid" in model name or specifications
+            
             For Australian formats:
             - Dates can be DD/MM/YYYY or DD-MM-YYYY (convert to YYYY-MM-DD)
             - ABN format: XX XXX XXX XXX (11 digits with spaces)
