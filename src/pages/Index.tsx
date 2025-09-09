@@ -124,8 +124,9 @@ const Index = () => {
   };
 
   const handleProcessingComplete = (data: any, confidenceScore: number) => {
-    // Run fraud detection analysis
-    const fraudResult = FraudDetectionService.analyzeInvoice(data, confidenceScore);
+    // FRAUD DETECTION DISABLED FOR PERFORMANCE - Run fraud detection analysis
+    // const fraudResult = FraudDetectionService.analyzeInvoice(data, confidenceScore);
+    const fraudResult = { fraudScore: 0, fraudIndicators: [], riskLevel: 'low' as const };
 
     setInvoiceData({
       // Financial
@@ -186,8 +187,9 @@ const Index = () => {
   const handleDataUpdate = (updatedData: Partial<InvoiceData>) => {
     const newData = { ...invoiceData, ...updatedData };
     
-    // Re-run fraud detection when data changes
-    const fraudResult = FraudDetectionService.analyzeInvoice(newData, confidence);
+    // FRAUD DETECTION DISABLED FOR PERFORMANCE - Re-run fraud detection when data changes
+    // const fraudResult = FraudDetectionService.analyzeInvoice(newData, confidence);
+    const fraudResult = { fraudScore: 0, fraudIndicators: [], riskLevel: 'low' as const };
     
     setInvoiceData({
       ...newData,
@@ -228,7 +230,7 @@ const Index = () => {
                 Australian Vehicle Invoice Processor
               </h1>
               <p className="text-muted-foreground mt-1">
-                Fast PDF processing with AI-powered extraction and fraud detection
+                Fast PDF processing with AI-powered extraction
               </p>
             </div>
           </div>
@@ -273,11 +275,13 @@ const Index = () => {
 
             {invoiceData && (
               <div className="space-y-6">
+                {/* FRAUD DETECTION DISABLED FOR PERFORMANCE
                 <FraudScoreIndicator 
                   fraudScore={invoiceData.fraudScore}
                   riskLevel={invoiceData.riskLevel}
                   fraudIndicators={invoiceData.fraudIndicators}
                 />
+                */}
                 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

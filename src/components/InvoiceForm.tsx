@@ -85,6 +85,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
     return value;
   };
 
+  // FRAUD DETECTION DISABLED FOR PERFORMANCE
+  /*
   const getFieldRiskBorder = (fieldName: string) => {
     if (!data.fraudIndicators) return '';
     const riskLevel = FraudDetectionService.getFieldRiskLevel(fieldName, data.fraudIndicators);
@@ -102,6 +104,7 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
     if (fieldIndicators.length === 0) return null;
     return fieldIndicators.map(i => i.message).join('; ');
   };
+  */
 
   return (
     <div className="space-y-6">
@@ -123,10 +126,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('totalCost', e.target.value)}
               placeholder="56,180.66"
               className={cn(
-                fieldsWithLowConfidence?.includes('totalCost') && "border-destructive",
-                getFieldRiskBorder('totalCost')
+                fieldsWithLowConfidence?.includes('totalCost') && "border-destructive"
               )}
-              title={getFieldTooltip('totalCost') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('totalCost', formatted);
@@ -141,10 +142,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('deposit', e.target.value)}
               placeholder="5,000.00"
               className={cn(
-                fieldsWithLowConfidence?.includes('deposit') && "border-destructive",
-                getFieldRiskBorder('deposit')
+                fieldsWithLowConfidence?.includes('deposit') && "border-destructive"
               )}
-              title={getFieldTooltip('deposit') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('deposit', formatted);
@@ -159,10 +158,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('tradeInValue', e.target.value)}
               placeholder="15,000.00"
               className={cn(
-                fieldsWithLowConfidence?.includes('tradeInValue') && "border-destructive",
-                getFieldRiskBorder('tradeInValue')
+                fieldsWithLowConfidence?.includes('tradeInValue') && "border-destructive"
               )}
-              title={getFieldTooltip('tradeInValue') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('tradeInValue', formatted);
@@ -177,10 +174,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('balanceOwing', e.target.value)}
               placeholder="36,180.66"
               className={cn(
-                fieldsWithLowConfidence?.includes('balanceOwing') && "border-destructive",
-                getFieldRiskBorder('balanceOwing')
+                fieldsWithLowConfidence?.includes('balanceOwing') && "border-destructive"
               )}
-              title={getFieldTooltip('balanceOwing') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('balanceOwing', formatted);
@@ -208,10 +203,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('gstAmount', e.target.value)}
               placeholder="4,944.13"
               className={cn(
-                fieldsWithLowConfidence?.includes('gstAmount') && "border-destructive",
-                getFieldRiskBorder('gstAmount')
+                fieldsWithLowConfidence?.includes('gstAmount') && "border-destructive"
               )}
-              title={getFieldTooltip('gstAmount') || undefined}
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('gstAmount', formatted);
@@ -357,10 +350,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('odometer', e.target.value)}
               placeholder="e.g., 45,000"
               className={cn(
-                fieldsWithLowConfidence?.includes('odometer') && "border-destructive",
-                getFieldRiskBorder('odometer')
+                fieldsWithLowConfidence?.includes('odometer') && "border-destructive"
               )}
-              title={getFieldTooltip('odometer') || undefined}
             />
           </div>
         </div>
@@ -384,10 +375,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               placeholder="17-character VIN"
               className={cn(
                 "font-mono text-sm",
-                fieldsWithLowConfidence?.includes('vin') && "border-destructive",
-                getFieldRiskBorder('vin')
+                fieldsWithLowConfidence?.includes('vin') && "border-destructive"
               )}
-              title={getFieldTooltip('vin') || undefined}
             />
           </div>
           <div className="space-y-2">
@@ -456,10 +445,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('vendorAbn', e.target.value)}
               placeholder="12 345 678 901"
               className={cn(
-                fieldsWithLowConfidence?.includes('vendorAbn') && "border-destructive",
-                getFieldRiskBorder('vendorAbn')
+                fieldsWithLowConfidence?.includes('vendorAbn') && "border-destructive"
               )}
-              title={getFieldTooltip('vendorAbn') || undefined}
             />
           </div>
         </div>
@@ -491,10 +478,8 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.purchaseDate}
               onChange={(e) => handleInputChange('purchaseDate', e.target.value)}
               className={cn(
-                fieldsWithLowConfidence?.includes('purchaseDate') && "border-destructive",
-                getFieldRiskBorder('purchaseDate')
+                fieldsWithLowConfidence?.includes('purchaseDate') && "border-destructive"
               )}
-              title={getFieldTooltip('purchaseDate') || undefined}
             />
           </div>
         </div>
