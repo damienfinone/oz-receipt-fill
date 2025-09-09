@@ -38,6 +38,16 @@ interface ParsedResult {
     vendorAbn?: string;
     purchaseDate?: string;
     invoiceNumber?: string;
+    
+    // Customer Details
+    deliverTo?: string;
+    
+    // Bank Details
+    bankName?: string;
+    accountName?: string;
+    bsb?: string;
+    accountNumber?: string;
+    paymentReference?: string;
   };
   confidence: number;
   fieldsWithLowConfidence: string[];
@@ -103,12 +113,18 @@ serve(async (req) => {
             - engineNumber: Engine number if available
             - vin: Vehicle Identification Number (17 characters)
             - nvic: National Vehicle Identification Code
-            - registration: Registration number
+            - registration: Registration number (Rego No., Registration, Plate Number). Look carefully for partial registrations or reference numbers
             - state: Australian state (NSW, VIC, QLD, WA, SA, TAS, NT, ACT)
             - vendorName: Business/dealer name
             - vendorAbn: Australian Business Number (format: XX XXX XXX XXX)
             - purchaseDate: Date in YYYY-MM-DD format
             - invoiceNumber: Invoice/receipt number
+            - deliverTo: Customer name or "Deliver To" address/name
+            - bankName: Bank name for payments (e.g., ANZ, CBA, Westpac, NAB)
+            - accountName: Bank account name
+            - bsb: BSB number (6 digits, may have space or hyphen)
+            - accountNumber: Bank account number
+            - paymentReference: Payment reference number or code
 
             INFERENCE RULES:
             - BYD models (SEAL, ATTO 3, DOLPHIN) = Electric vehicle, typically sedan/SUV/hatchback respectively
@@ -126,7 +142,10 @@ serve(async (req) => {
               "data": {
                 "totalCost": "string value",
                 "assetType": "string value", 
-                "vehicleMake": "string value"
+                "vehicleMake": "string value",
+                "deliverTo": "string value",
+                "bankName": "string value",
+                "paymentReference": "string value"
               },
               "confidence": number,
               "fieldsWithLowConfidence": ["fieldName1", "fieldName2"]

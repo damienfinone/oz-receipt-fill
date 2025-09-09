@@ -35,6 +35,16 @@ interface InvoiceData {
   vendorAbn: string;
   purchaseDate: string;
   invoiceNumber: string;
+  
+  // Customer Details
+  deliverTo: string;
+  
+  // Bank Details
+  bankName: string;
+  accountName: string;
+  bsb: string;
+  accountNumber: string;
+  paymentReference: string;
 }
 
 interface InvoiceFormProps {
@@ -373,6 +383,124 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               value={data.purchaseDate}
               onChange={(e) => handleInputChange('purchaseDate', e.target.value)}
             />
+          </div>
+        </div>
+      </Card>
+
+      <Separator />
+
+      {/* Customer Details */}
+      <Card className="p-4 border-primary/20 bg-primary/5">
+        <div className="flex items-center gap-2 mb-3">
+          <Building className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-primary">Customer Details</h3>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="deliverTo">Deliver To</Label>
+          <Input
+            id="deliverTo"
+            value={data.deliverTo}
+            onChange={(e) => handleInputChange('deliverTo', e.target.value)}
+            placeholder="Customer name or delivery address"
+          />
+          {fieldsWithLowConfidence.includes('deliverTo') && (
+            <ConfidenceIndicator 
+              fieldName="deliverTo" 
+              confidence={confidence}
+              isLowConfidence={fieldsWithLowConfidence.includes('deliverTo')}
+            />
+          )}
+        </div>
+      </Card>
+
+      <Separator />
+
+      {/* Bank Details */}
+      <Card className="p-4 border-secondary/20 bg-secondary/5">
+        <div className="flex items-center gap-2 mb-3">
+          <DollarSign className="h-4 w-4 text-secondary" />
+          <h3 className="font-semibold text-secondary">Bank Details</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="bankName">Bank Name</Label>
+            <Input
+              id="bankName"
+              value={data.bankName}
+              onChange={(e) => handleInputChange('bankName', e.target.value)}
+              placeholder="ANZ, CBA, Westpac, NAB"
+            />
+            {fieldsWithLowConfidence.includes('bankName') && (
+              <ConfidenceIndicator 
+                fieldName="bankName" 
+                confidence={confidence}
+                isLowConfidence={fieldsWithLowConfidence.includes('bankName')}
+              />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="accountName">Account Name</Label>
+            <Input
+              id="accountName"
+              value={data.accountName}
+              onChange={(e) => handleInputChange('accountName', e.target.value)}
+              placeholder="Account holder name"
+            />
+            {fieldsWithLowConfidence.includes('accountName') && (
+              <ConfidenceIndicator 
+                fieldName="accountName" 
+                confidence={confidence}
+                isLowConfidence={fieldsWithLowConfidence.includes('accountName')}
+              />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bsb">BSB</Label>
+            <Input
+              id="bsb"
+              value={data.bsb}
+              onChange={(e) => handleInputChange('bsb', e.target.value)}
+              placeholder="123-456"
+            />
+            {fieldsWithLowConfidence.includes('bsb') && (
+              <ConfidenceIndicator 
+                fieldName="bsb" 
+                confidence={confidence}
+                isLowConfidence={fieldsWithLowConfidence.includes('bsb')}
+              />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="accountNumber">Account Number</Label>
+            <Input
+              id="accountNumber"
+              value={data.accountNumber}
+              onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+              placeholder="123456789"
+            />
+            {fieldsWithLowConfidence.includes('accountNumber') && (
+              <ConfidenceIndicator 
+                fieldName="accountNumber" 
+                confidence={confidence}
+                isLowConfidence={fieldsWithLowConfidence.includes('accountNumber')}
+              />
+            )}
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="paymentReference">Payment Reference</Label>
+            <Input
+              id="paymentReference"
+              value={data.paymentReference}
+              onChange={(e) => handleInputChange('paymentReference', e.target.value)}
+              placeholder="Payment reference code"
+            />
+            {fieldsWithLowConfidence.includes('paymentReference') && (
+              <ConfidenceIndicator 
+                fieldName="paymentReference" 
+                confidence={confidence}
+                isLowConfidence={fieldsWithLowConfidence.includes('paymentReference')}
+              />
+            )}
           </div>
         </div>
       </Card>

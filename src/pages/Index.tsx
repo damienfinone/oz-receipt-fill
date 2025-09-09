@@ -38,6 +38,16 @@ interface InvoiceData {
   vendorAbn: string;
   purchaseDate: string;
   invoiceNumber: string;
+  
+  // Customer Details
+  deliverTo: string;
+  
+  // Bank Details
+  bankName: string;
+  accountName: string;
+  bsb: string;
+  accountNumber: string;
+  paymentReference: string;
 }
 
 const Index = () => {
@@ -67,6 +77,12 @@ const Index = () => {
     vendorAbn: "",
     purchaseDate: "",
     invoiceNumber: "",
+    deliverTo: "",
+    bankName: "",
+    accountName: "",
+    bsb: "",
+    accountNumber: "",
+    paymentReference: "",
   });
   
   const [confidence, setConfidence] = useState(0);
