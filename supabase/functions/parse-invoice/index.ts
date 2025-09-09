@@ -101,36 +101,24 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-5-mini-2025-08-07",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: `Extract structured data from Australian vehicle invoices. Return ONLY valid JSON.
+            content: `Extract data from Australian vehicle invoices and return valid JSON only.
 
-Financial: totalCost, deposit, purchasePrice, gstAmount
-Vehicle: vehicleMake, vehicleModel, vehicleYear, bodyType, transmission, fuelType, color, vin, registration, state  
-Vendor: vendorName, vendorAbn, purchaseDate, invoiceNumber
-Customer: deliverTo
-Bank: bankName, bsb, accountNumber
+Extract: totalCost, deposit, purchasePrice, gstAmount, vehicleMake, vehicleModel, vehicleYear, bodyType, transmission, fuelType, color, vin, registration, state, vendorName, vendorAbn, purchaseDate, invoiceNumber.
 
-For fraud detection, add:
-- fraudScore (0-100, higher = more trustworthy)
-- fraudIndicators (array of issues)  
-- riskLevel ("low"/"medium"/"high")
+Add fraud analysis: fraudScore (0-100), riskLevel ("low"/"medium"/"high").
 
-Return format:
-{
-  "data": {...all fields...},
-  "confidence": 85,
-  "fieldsWithLowConfidence": ["field1", "field2"]
-}`
+Format: {"data": {...}, "confidence": 85, "fieldsWithLowConfidence": [...]}`
           },
           {
             role: "user", 
-            content: `Extract data from this Australian vehicle invoice:\n\n${text.substring(0, 3000)}`
+            content: `Extract from invoice:\n\n${text.substring(0, 4000)}`
           }
         ],
-        max_completion_tokens: 800
+        max_tokens: 1200
       }),
     });
 
@@ -139,7 +127,7 @@ Return format:
     if (!response.ok) {
       const error = await response.text();
       console.error('OpenAI API error:', error);
-      console.error('Request details - Model: gpt-5-mini-2025-08-07, Tokens: 800, Text length:', text.length);
+      console.error('Request details - Model: gpt-4o-mini, Tokens: 1200, Text length:', text.length);
       throw new Error(`OpenAI API error: ${response.status} - ${error}`);
     }
 
