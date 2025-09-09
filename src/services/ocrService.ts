@@ -53,7 +53,7 @@ export class OCRService {
     return this.worker;
   }
 
-  static async extractTextFromPdf(file: File): Promise<string | null> {
+  static async extractTextFromPdf(file: File): Promise<{ text: string | null; pdfDoc: any }> {
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -71,21 +71,22 @@ export class OCRService {
         fullText += pageText + '\n';
       }
       
-      // Only return if we extracted meaningful text (more than 50 characters)
-      return fullText.trim().length > 50 ? fullText.trim() : null;
+      const text = fullText.trim();
+      // Return both text and PDF document for potential reuse
+      return { 
+        text: text.length > 20 ? text : null, // Lowered threshold for better detection
+        pdfDoc: pdf 
+      };
     } catch (error) {
       console.warn('PDF text extraction failed:', error);
-      return null;
+      return { text: null, pdfDoc: null };
     }
   }
 
-  static async convertPdfToImage(file: File, fastMode: boolean = false): Promise<File> {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
+  static async convertPdfToImage(pdfDoc: any, fastMode: boolean = false): Promise<File> {
     // Get the first page
-    const page = await pdf.getPage(1);
-    const scale = fastMode ? 1.2 : 2.0; // Reduced scales for faster processing
+    const page = await pdfDoc.getPage(1);
+    const scale = fastMode ? 1.0 : 1.5; // Further reduced scales for speed
     const viewport = page.getViewport({ scale });
     
     // Create canvas
@@ -104,9 +105,9 @@ export class OCRService {
     // Convert canvas to blob then to File
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
-        const imageFile = new File([blob!], `${file.name}.png`, { type: 'image/png' });
+        const imageFile = new File([blob!], 'converted.png', { type: 'image/png' });
         resolve(imageFile);
-      }, 'image/png', 0.9); // Reduced quality for speed
+      }, 'image/png', 0.85); // Lower quality for faster processing
     });
   }
 
@@ -164,29 +165,41 @@ export class OCRService {
 
   static async extractTextFromFile(file: File, usePreprocessing: boolean = true, fastMode: boolean = false): Promise<string> {
     try {
+      const startTime = Date.now();
       console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
       
       // FAST PATH: Try PDF text layer extraction first (if PDF)
       if (this.isPdfFile(file)) {
         console.log('Attempting fast PDF text extraction...');
-        const pdfText = await this.extractTextFromPdf(file);
+        const { text: pdfText, pdfDoc } = await this.extractTextFromPdf(file);
         if (pdfText) {
-          console.log('Fast PDF text extraction successful, text length:', pdfText.length);
+          console.log(`Fast PDF text extraction successful in ${Date.now() - startTime}ms, text length:`, pdfText.length);
           return pdfText;
         }
-        console.log('PDF has no text layer, falling back to OCR...');
+        console.log('PDF has no meaningful text layer, converting to image for OCR...');
+        
+        // FALLBACK: OCR processing with cached PDF document
+        const worker = await this.initializeWorker();
+        const processedFile = await this.convertPdfToImage(pdfDoc, fastMode);
+        console.log(`PDF converted to image in ${Date.now() - startTime}ms`);
+        
+        // Convert file to image buffer and process with OCR
+        let imageBuffer = await processedFile.arrayBuffer();
+        
+        // Skip preprocessing in fast mode for speed
+        if (usePreprocessing && !fastMode) {
+          console.log('Applying image preprocessing...');
+          imageBuffer = await this.preprocessImage(imageBuffer);
+        }
+        
+        const { data: { text, confidence } } = await worker.recognize(new Uint8Array(imageBuffer));
+        console.log(`OCR completed in ${Date.now() - startTime}ms, text length:`, text.length, 'confidence:', confidence);
+        return text;
       }
       
-      // FALLBACK: OCR processing
+      // IMAGE FILE processing
       const worker = await this.initializeWorker();
       let processedFile = file;
-      
-      // Convert PDF to image if necessary
-      if (this.isPdfFile(file)) {
-        console.log('Converting PDF to image for OCR...');
-        processedFile = await this.convertPdfToImage(file, fastMode);
-        console.log('PDF converted to image:', processedFile.name);
-      }
       
       // Convert file to image buffer
       let imageBuffer = await processedFile.arrayBuffer();
@@ -199,7 +212,7 @@ export class OCRService {
       
       const { data: { text, confidence } } = await worker.recognize(new Uint8Array(imageBuffer));
       
-      console.log('Extracted text length:', text.length, 'OCR confidence:', confidence);
+      console.log(`Image OCR completed in ${Date.now() - startTime}ms, text length:`, text.length, 'confidence:', confidence);
       return text;
     } catch (error) {
       console.error('OCR extraction failed:', error);
@@ -346,15 +359,21 @@ export class OCRService {
         console.warn('Document analysis service not available:', error);
       }
       
-      // Smart extraction: PDF text layer first, then OCR fallback
-      let text = await this.extractTextFromFile(file, false, true); // Fast mode first
+      // Smart extraction: Optimized single-pass processing
+      console.log('Starting text extraction...');
+      const extractionStart = Date.now();
       
-      // If extraction quality is poor, retry with enhanced OCR
-      if (text.length < 100) {
-        console.log('Initial extraction yielded poor results, retrying with enhanced processing...');
+      // Use smart fast mode - no preprocessing, optimized settings
+      let text = await this.extractTextFromFile(file, false, true);
+      
+      console.log(`Text extraction completed in ${Date.now() - extractionStart}ms, text length:`, text.length);
+      
+      // Only retry if text is extremely short (likely complete failure)
+      if (text.length < 20 && !this.isPdfFile(file)) {
+        console.log('Text extraction failed, retrying with preprocessing...');
         text = await this.extractTextFromFile(file, true, false);
       }
-      onProgress?.(40);
+      onProgress?.(35);
       
       console.log('Using AI-enhanced parsing via edge function...');
       
