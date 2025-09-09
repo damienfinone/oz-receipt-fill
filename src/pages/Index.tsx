@@ -130,6 +130,13 @@ const Index = () => {
         (progress) => setProcessingProgress(progress)
       );
       
+      // Calculate processing time for text extraction only (exclude fraud analysis)
+      if (startTime) {
+        const endTime = Date.now();
+        const timeTaken = (endTime - startTime) / 1000; // Convert to seconds
+        setProcessingTime(timeTaken);
+      }
+      
       // Run fraud detection analysis (including document analysis if available)
       const fraudAnalysis = FraudDetectionService.analyzeInvoice(
         result.data, 
@@ -148,13 +155,6 @@ const Index = () => {
       setInvoiceData(prev => ({ ...prev, ...dataWithFraud }));
       setConfidence(result.confidence);
       setFieldsWithLowConfidence(result.fieldsWithLowConfidence);
-      
-      // Calculate processing time
-      if (startTime) {
-        const endTime = Date.now();
-        const timeTaken = (endTime - startTime) / 1000; // Convert to seconds
-        setProcessingTime(timeTaken);
-      }
       
       const accuracyText = result.confidence > 60 ? 
         `AI-enhanced processing complete (${result.confidence}% confidence)` :
