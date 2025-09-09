@@ -6,9 +6,10 @@ interface ConfidenceIndicatorProps {
   confidence: number;
   fieldName?: string;
   isLowConfidence?: boolean;
+  processingTime?: number;
 }
 
-export function ConfidenceIndicator({ confidence, fieldName, isLowConfidence }: ConfidenceIndicatorProps) {
+export function ConfidenceIndicator({ confidence, fieldName, isLowConfidence, processingTime }: ConfidenceIndicatorProps) {
   const getConfidenceLevel = () => {
     if (confidence >= 90) return 'high';
     if (confidence >= 70) return 'medium';
@@ -32,9 +33,12 @@ export function ConfidenceIndicator({ confidence, fieldName, isLowConfidence }: 
 
   const getText = () => {
     if (fieldName && isFieldLowConfidence) return 'Please verify';
-    if (level === 'high') return `${confidence}%`;
-    if (level === 'medium') return `${confidence}%`;
-    return `${confidence}%`;
+    const confidenceText = `${confidence}%`;
+    if (processingTime && !fieldName) {
+      const timeText = processingTime < 1000 ? `${processingTime}ms` : `${Math.round(processingTime / 1000 * 100) / 100}s`;
+      return `${confidenceText} • ${timeText}`;
+    }
+    return confidenceText;
   };
 
   return (

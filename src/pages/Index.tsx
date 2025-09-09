@@ -1,3 +1,4 @@
+import { ConfidenceIndicator } from "@/components/ConfidenceIndicator";
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { DocumentUpload } from "@/components/DocumentUpload";
@@ -72,6 +73,7 @@ const Index = () => {
   const [confidence, setConfidence] = useState<number>(0);
   const [fieldsWithLowConfidence, setFieldsWithLowConfidence] = useState<string[]>([]);
   const [fraudAnalysis, setFraudAnalysis] = useState<FraudAnalysis | null>(null);
+  const [processingTime, setProcessingTime] = useState<number | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = async (uploadedFile: File) => {
@@ -84,6 +86,7 @@ const Index = () => {
     setConfidence(0);
     setFieldsWithLowConfidence([]);
     setFraudAnalysis(null);
+    setProcessingTime(null);
 
     try {
       console.log('Starting document processing with new flow...');
@@ -98,9 +101,10 @@ const Index = () => {
       if (result.mode === 'sync' && result.status === 'completed') {
         // Handle synchronous completion
         handleProcessingComplete(result.result, result.confidence);
+        setProcessingTime(result.elapsedMs || 0);
         toast({
           title: "Processing completed",
-          description: `Invoice processed instantly with ${result.confidence}% confidence`,
+          description: `Invoice processed in ${Math.round((result.elapsedMs || 0) / 1000 * 100) / 100}s with ${result.confidence}% confidence`,
         });
       } else if (result.mode === 'async') {
         // Handle asynchronous processing
@@ -289,9 +293,10 @@ const Index = () => {
                       Extracted Data
                     </CardTitle>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground">
-                        Confidence: {confidence}%
-                      </span>
+                      <ConfidenceIndicator 
+                        confidence={confidence}
+                        processingTime={processingTime || undefined}
+                      />
                       {processingMode === 'sync' && (
                         <div className="flex items-center text-xs text-success">
                           <Zap className="mr-1 h-3 w-3" />
