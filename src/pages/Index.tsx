@@ -71,8 +71,6 @@ const Index = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [processingTime, setProcessingTime] = useState<number | null>(null);
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     totalCost: "",
     deposit: "",
@@ -117,25 +115,15 @@ const Index = () => {
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    const uploadStartTime = Date.now();
-    setStartTime(uploadStartTime);
     setUploadedFile(file);
     setIsProcessing(true);
     setProcessingProgress(0);
-    setProcessingTime(null);
     
     try {
       const result = await OCRService.processInvoice(
         file, 
         (progress) => setProcessingProgress(progress)
       );
-      
-      // Calculate processing time for text extraction only (exclude fraud analysis)
-      if (startTime) {
-        const endTime = Date.now();
-        const timeTaken = (endTime - startTime) / 1000; // Convert to seconds
-        setProcessingTime(timeTaken);
-      }
       
       // Run fraud detection analysis (including document analysis if available)
       const fraudAnalysis = FraudDetectionService.analyzeInvoice(
@@ -257,38 +245,6 @@ const Index = () => {
                 <h2 className="text-xl font-semibold">Upload Invoice</h2>
               </div>
               <DocumentUpload onFileUpload={handleFileUpload} />
-              
-              {/* Processing Status underneath upload */}
-              {isProcessing && (
-                <div className="mt-6 p-4 border border-primary/20 bg-primary/5 rounded-lg">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-primary">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <p className="text-sm font-medium">
-                        Processing document with AI-enhanced extraction and fraud detection...
-                      </p>
-                    </div>
-                    <Progress value={processingProgress} className="w-full" />
-                    <p className="text-xs text-muted-foreground">
-                      {processingProgress < 25 ? 'Initializing OCR engine...' :
-                       processingProgress < 50 ? 'Extracting text from document...' :
-                       processingProgress < 75 ? 'Parsing invoice data...' :
-                       'Running fraud detection analysis...'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {processingTime && !isProcessing && uploadedFile && Object.values(invoiceData).some(value => value !== "") && (
-                <div className="mt-4 p-3 border border-success/20 bg-success/5 rounded-lg">
-                  <div className="flex items-center gap-2 text-success">
-                    <div className="h-2 w-2 rounded-full bg-success" />
-                    <p className="text-sm font-medium">
-                      Document processed successfully in {processingTime.toFixed(1)} seconds! Review the extracted data and fraud analysis.
-                    </p>
-                  </div>
-                </div>
-              )}
             </Card>
 
             {uploadedFile && (
@@ -336,7 +292,28 @@ const Index = () => {
               </Button>
             </Card>
 
-            {uploadedFile && !isProcessing && Object.values(invoiceData).some(value => value !== "") && !processingTime && (
+            {/* Processing Status */}
+            {isProcessing && (
+              <Card className="p-4 border-primary/20 bg-primary/5">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <p className="text-sm font-medium">
+                      Processing document with AI-enhanced extraction and fraud detection...
+                    </p>
+                  </div>
+                  <Progress value={processingProgress} className="w-full" />
+                  <p className="text-xs text-muted-foreground">
+                    {processingProgress < 25 ? 'Initializing OCR engine...' :
+                     processingProgress < 50 ? 'Extracting text from document...' :
+                     processingProgress < 75 ? 'Parsing invoice data...' :
+                     'Running fraud detection analysis...'}
+                  </p>
+                </div>
+              </Card>
+            )}
+            
+            {uploadedFile && !isProcessing && Object.values(invoiceData).some(value => value !== "") && (
               <Card className="p-4 border-success/20 bg-success/5">
                 <div className="flex items-center gap-2 text-success">
                   <div className="h-2 w-2 rounded-full bg-success" />

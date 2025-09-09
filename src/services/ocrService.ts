@@ -44,23 +44,17 @@ export class OCRService {
   static async initializeWorker() {
     if (!this.worker) {
       this.worker = await createWorker('eng');
-      // Optimize Tesseract settings for speed
-      await this.worker.setParameters({
-        tessedit_pageseg_mode: '1', // Automatic page segmentation with OSD
-        tessedit_ocr_engine_mode: '1', // Neural nets LSTM engine only (faster)
-      });
     }
     return this.worker;
   }
 
-  static async convertPdfToImage(file: File, fastMode: boolean = false): Promise<File> {
+  static async convertPdfToImage(file: File): Promise<File> {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     
     // Get the first page
     const page = await pdf.getPage(1);
-    const scale = fastMode ? 1.5 : 2.5; // Optimized scales for speed vs quality
-    const viewport = page.getViewport({ scale });
+    const viewport = page.getViewport({ scale: 3.0 }); // Higher scale for better OCR quality
     
     // Create canvas
     const canvas = document.createElement('canvas');
@@ -136,7 +130,7 @@ export class OCRService {
     });
   }
 
-  static async extractTextFromFile(file: File, usePreprocessing: boolean = true, fastMode: boolean = false): Promise<string> {
+  static async extractTextFromFile(file: File, usePreprocessing: boolean = true): Promise<string> {
     const worker = await this.initializeWorker();
     
     try {
@@ -147,15 +141,15 @@ export class OCRService {
       // Convert PDF to image if necessary
       if (this.isPdfFile(file)) {
         console.log('Converting PDF to image for OCR...');
-        processedFile = await this.convertPdfToImage(file, fastMode);
+        processedFile = await this.convertPdfToImage(file);
         console.log('PDF converted to image:', processedFile.name);
       }
       
       // Convert file to image buffer
       let imageBuffer = await processedFile.arrayBuffer();
       
-      // Apply image preprocessing if enabled (skip in fast mode for speed)
-      if (usePreprocessing && !fastMode) {
+      // Apply image preprocessing if enabled
+      if (usePreprocessing) {
         console.log('Applying image preprocessing...');
         imageBuffer = await this.preprocessImage(imageBuffer);
       }
@@ -309,14 +303,8 @@ export class OCRService {
         console.warn('Document analysis service not available:', error);
       }
       
-      // Start with fast extraction, fallback to high-quality if needed
-      let text = await this.extractTextFromFile(file, false, true); // Fast mode first
-      
-      // If extraction quality is poor, retry with full processing
-      if (text.length < 100) {
-        console.log('Fast extraction yielded poor results, retrying with full processing...');
-        text = await this.extractTextFromFile(file, true, false);
-      }
+      // Extract text with preprocessing enabled
+      const text = await this.extractTextFromFile(file, true);
       onProgress?.(50);
       
       console.log('Using AI-enhanced parsing via edge function...');
