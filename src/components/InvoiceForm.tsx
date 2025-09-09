@@ -10,6 +10,8 @@ interface InvoiceData {
   // Financial
   totalCost: string;
   deposit: string;
+  tradeInValue: string;
+  balanceOwing: string;
   purchasePrice: string;
   gstAmount: string;
   
@@ -105,6 +107,32 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onBlur={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 handleInputChange('deposit', formatted);
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tradeInValue">Trade in Value (AUD)</Label>
+            <Input
+              id="tradeInValue"
+              value={data.tradeInValue}
+              onChange={(e) => handleInputChange('tradeInValue', e.target.value)}
+              placeholder="15,000.00"
+              onBlur={(e) => {
+                const formatted = formatCurrency(e.target.value);
+                handleInputChange('tradeInValue', formatted);
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="balanceOwing">Balance Owing/Payable (AUD)</Label>
+            <Input
+              id="balanceOwing"
+              value={data.balanceOwing}
+              onChange={(e) => handleInputChange('balanceOwing', e.target.value)}
+              placeholder="36,180.66"
+              onBlur={(e) => {
+                const formatted = formatCurrency(e.target.value);
+                handleInputChange('balanceOwing', formatted);
               }}
             />
           </div>

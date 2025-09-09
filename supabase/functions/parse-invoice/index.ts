@@ -13,6 +13,8 @@ interface ParsedResult {
     // Financial
     totalCost?: string;
     deposit?: string;
+    tradeInValue?: string;
+    balanceOwing?: string;
     purchasePrice?: string;
     gstAmount?: string;
     
@@ -100,6 +102,8 @@ serve(async (req) => {
             Extract these fields as STRING values in a flat structure:
             - totalCost: Total cost including all charges (as string, numbers only, no currency symbols)
             - deposit: Deposit amount if mentioned (as string, numbers only)
+            - tradeInValue: Trade in value/allowance (as string, numbers only)
+            - balanceOwing: Balance owing/payable amount (as string, numbers only)
             - purchasePrice: Purchase price/subtotal (as string, numbers only, no currency symbols)
             - gstAmount: GST amount (as string, numbers only)
             - assetType: Type of asset (motor-vehicle, motorcycle, etc.)
@@ -132,10 +136,12 @@ serve(async (req) => {
             - Most vehicles 2020+ are automatic transmission unless specified as manual
             - Hybrid vehicles often have "Hybrid" in model name or specifications
             
-            For Australian formats:
-            - Dates can be DD/MM/YYYY or DD-MM-YYYY (convert to YYYY-MM-DD)
-            - ABN format: XX XXX XXX XXX (11 digits with spaces)
-            - Currency amounts: remove $ and commas, keep decimal points
+            IMPORTANT VALIDATION:
+            - Ensure all currency amounts are formatted as strings with 2 decimal places (e.g., "56180.66")
+            - Calculate and verify: Balance Owing should equal Total Cost - Deposit - Trade in Value
+            - If the calculation doesn't match exactly, use the explicitly stated balance owing amount
+            - If a field cannot be found or determined, return an empty string ""
+            - For confidence scoring, be conservative - only give high confidence (>80) when you're very certain
             
             Return ONLY a JSON object with this FLAT structure (do not group fields):
             {

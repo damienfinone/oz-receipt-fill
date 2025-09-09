@@ -13,6 +13,8 @@ interface InvoiceData {
   // Financial
   totalCost: string;
   deposit: string;
+  tradeInValue: string;
+  balanceOwing: string;
   purchasePrice: string;
   gstAmount: string;
   
@@ -58,6 +60,8 @@ const Index = () => {
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     totalCost: "",
     deposit: "",
+    tradeInValue: "",
+    balanceOwing: "",
     purchasePrice: "",
     gstAmount: "",
     assetType: "",
