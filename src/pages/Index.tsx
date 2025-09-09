@@ -28,6 +28,7 @@ interface InvoiceData {
   fuelType: string;
   color: string;
   engineNumber: string;
+  odometer: string;
   
   // Identification
   vin: string;
@@ -73,6 +74,7 @@ const Index = () => {
     fuelType: "",
     color: "",
     engineNumber: "",
+    odometer: "",
     vin: "",
     nvic: "",
     registration: "",

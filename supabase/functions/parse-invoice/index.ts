@@ -28,6 +28,7 @@ interface ParsedResult {
     fuelType?: string;
     color?: string;
     engineNumber?: string;
+    odometer?: string;
     
     // Identification
     vin?: string;
@@ -115,6 +116,7 @@ serve(async (req) => {
             - fuelType: Fuel type (electric, petrol, diesel, hybrid, plug-in hybrid, etc.). If not explicitly stated, infer from vehicleMake, vehicleModel, and vehicleYear (e.g., BYD SEAL = electric, Tesla = electric)
             - color: Vehicle color
             - engineNumber: Engine number if available
+            - odometer: Vehicle odometer reading in kilometers (as string, numbers only)
             - vin: Vehicle Identification Number (17 characters)
             - nvic: National Vehicle Identification Code
             - registration: Registration number (Rego No., Registration, Plate Number). Look carefully for partial registrations or reference numbers

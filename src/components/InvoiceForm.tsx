@@ -25,6 +25,7 @@ interface InvoiceData {
   fuelType: string;
   color: string;
   engineNumber: string;
+  odometer: string;
   
   // Identification
   vin: string;
@@ -291,6 +292,15 @@ export const InvoiceForm = ({ data, onDataUpdate, confidence, fieldsWithLowConfi
               onChange={(e) => handleInputChange('engineNumber', e.target.value)}
               placeholder="Engine number"
               className="font-mono text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="odometer">Odometer (km)</Label>
+            <Input
+              id="odometer"
+              value={data.odometer}
+              onChange={(e) => handleInputChange('odometer', e.target.value)}
+              placeholder="e.g., 45,000"
             />
           </div>
         </div>
