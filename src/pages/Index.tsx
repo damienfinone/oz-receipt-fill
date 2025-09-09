@@ -1,23 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Toaster } from "@/components/ui/toaster";
 import { DocumentUpload } from "@/components/DocumentUpload";
-import { InvoiceForm } from "@/components/InvoiceForm";
 import { DocumentPreview } from "@/components/DocumentPreview";
+import { InvoiceForm } from "@/components/InvoiceForm";
 import { FraudScoreIndicator } from "@/components/FraudScoreIndicator";
-import { Card } from "@/components/ui/card";
+import { ProcessingStatus } from "@/components/ProcessingStatus";
+import { JobTracker } from "@/components/JobTracker";
+import { DocumentProcessor } from "@/services/documentProcessor";
+import { FraudDetectionService, FraudAnalysis } from "@/services/fraudDetectionService";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/components/ui/use-toast";
-import { OCRService } from "@/services/ocrService";
-import { FraudDetectionService } from "@/services/fraudDetectionService";
-import { FileText, Car, DollarSign, Loader2, Download } from "lucide-react";
+import { Download, FileText, Loader2, Zap, Clock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface InvoiceData {
   // Financial
   totalCost: string;
   deposit: string;
-  tradeInValue: string;
-  balanceOwing: string;
   purchasePrice: string;
   gstAmount: string;
   
@@ -31,7 +30,6 @@ interface InvoiceData {
   fuelType: string;
   color: string;
   engineNumber: string;
-  odometer: string;
   
   // Identification
   vin: string;
@@ -39,15 +37,15 @@ interface InvoiceData {
   registration: string;
   state: string;
   
-  // Fraud Detection
-  fraudScore?: number;
-  fraudIndicators?: Array<{
-    type: 'critical' | 'warning' | 'info' | 'metadata-tampering' | 'visual-inconsistency' | 'text-layer-mismatch';
+  // Fraud Analysis
+  fraudScore: number;
+  fraudIndicators: Array<{
+    type: string;
     field: string;
     message: string;
     severity: number;
   }>;
-  riskLevel?: 'low' | 'medium' | 'high';
+  riskLevel: 'low' | 'medium' | 'high';
   
   // Vendor & Invoice
   vendorName: string;
@@ -55,154 +53,146 @@ interface InvoiceData {
   purchaseDate: string;
   invoiceNumber: string;
   
-  // Customer Details
-  deliverTo: string;
-  
-  // Bank Details
+  // Bank Details (placeholders for future use)
   bankName: string;
-  accountName: string;
-  bsb: string;
+  bsbNumber: string;
   accountNumber: string;
-  paymentReference: string;
+  accountName: string;
 }
 
 const Index = () => {
-  const { toast } = useToast();
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const [invoiceData, setInvoiceData] = useState<InvoiceData>({
-    totalCost: "",
-    deposit: "",
-    tradeInValue: "",
-    balanceOwing: "",
-    purchasePrice: "",
-    gstAmount: "",
-    assetType: "",
-    bodyType: "",
-    vehicleMake: "",
-    vehicleModel: "",
-    vehicleYear: "",
-    transmission: "",
-    fuelType: "",
-    color: "",
-    engineNumber: "",
-    odometer: "",
-    vin: "",
-    nvic: "",
-    registration: "",
-    state: "",
-    vendorName: "",
-    vendorAbn: "",
-    purchaseDate: "",
-    invoiceNumber: "",
-    deliverTo: "",
-    bankName: "",
-    accountName: "",
-    bsb: "",
-    accountNumber: "",
-    paymentReference: "",
-  });
-  
-  const [confidence, setConfidence] = useState(0);
+  const [processingMode, setProcessingMode] = useState<'sync' | 'async' | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+  const [confidence, setConfidence] = useState<number>(0);
   const [fieldsWithLowConfidence, setFieldsWithLowConfidence] = useState<string[]>([]);
+  const [fraudAnalysis, setFraudAnalysis] = useState<FraudAnalysis | null>(null);
+  const { toast } = useToast();
 
-  // Cleanup OCR worker on unmount
-  useEffect(() => {
-    return () => {
-      OCRService.terminate();
-    };
-  }, []);
-
-  const handleFileUpload = async (file: File) => {
-    setUploadedFile(file);
+  const handleFileUpload = async (uploadedFile: File) => {
+    setFile(uploadedFile);
     setIsProcessing(true);
     setProcessingProgress(0);
-    
+    setProcessingMode(null);
+    setJobId(null);
+    setInvoiceData(null);
+    setConfidence(0);
+    setFieldsWithLowConfidence([]);
+    setFraudAnalysis(null);
+
     try {
-      const result = await OCRService.processInvoice(
-        file, 
-        (progress) => setProcessingProgress(progress)
-      );
+      console.log('Starting document processing with new flow...');
       
-      // Run fraud detection analysis (including document analysis if available)
-      const fraudAnalysis = FraudDetectionService.analyzeInvoice(
-        result.data, 
-        result.confidence, 
-        result.documentAnalysis
-      );
-      
-      // Update form with extracted data and fraud analysis
-      const dataWithFraud = {
-        ...result.data,
-        fraudScore: fraudAnalysis.fraudScore,
-        fraudIndicators: fraudAnalysis.fraudIndicators,
-        riskLevel: fraudAnalysis.riskLevel
-      };
-      
-      setInvoiceData(prev => ({ ...prev, ...dataWithFraud }));
-      setConfidence(result.confidence);
-      setFieldsWithLowConfidence(result.fieldsWithLowConfidence);
-      
-      const accuracyText = result.confidence > 60 ? 
-        `AI-enhanced processing complete (${result.confidence}% confidence)` :
-        `Local processing complete (${result.confidence}% confidence)`;
-      
-      toast({
-        title: "Document processed successfully",
-        description: accuracyText,
+      const result = await DocumentProcessor.processDocument(uploadedFile, (progress) => {
+        setProcessingProgress(progress);
       });
-      
-      // Show fraud analysis results
-      if (fraudAnalysis.riskLevel === 'high') {
+
+      console.log('Processing result:', result);
+      setProcessingMode(result.mode);
+
+      if (result.mode === 'sync' && result.status === 'completed') {
+        // Handle synchronous completion
+        handleProcessingComplete(result.result, result.confidence);
         toast({
-          title: "High fraud risk detected",
-          description: `Fraud score: ${fraudAnalysis.fraudScore}/100. Please review carefully.`,
-          variant: "destructive",
+          title: "Processing completed",
+          description: `Invoice processed instantly with ${result.confidence}% confidence`,
         });
-      } else if (fraudAnalysis.riskLevel === 'medium') {
+      } else if (result.mode === 'async') {
+        // Handle asynchronous processing
+        setJobId(result.jobId);
         toast({
-          title: "Medium fraud risk detected",
-          description: `Fraud score: ${fraudAnalysis.fraudScore}/100. Some issues found.`,
-          variant: "default",
-        });
-      }
-      
-      if (result.fieldsWithLowConfidence.length > 0) {
-        toast({
-          title: "Some fields need verification",
-          description: `Please review: ${result.fieldsWithLowConfidence.join(', ')}`,
-          variant: "default",
+          title: "Processing started",
+          description: "Your document is being processed. You'll be notified when it's ready.",
         });
       }
+
     } catch (error) {
-      console.error('Processing error:', error);
+      console.error('Processing failed:', error);
       toast({
         title: "Processing failed",
-        description: "Could not extract data from the document. Please fill the form manually.",
+        description: error.message || "An error occurred while processing the document.",
         variant: "destructive",
       });
-    } finally {
       setIsProcessing(false);
       setProcessingProgress(0);
     }
   };
 
+  const handleProcessingComplete = (data: any, confidenceScore: number) => {
+    // Run fraud detection analysis
+    const fraudResult = FraudDetectionService.analyzeInvoice(data, confidenceScore);
+
+    setInvoiceData({
+      // Financial
+      totalCost: data.totalCost || '',
+      deposit: data.deposit || '',
+      purchasePrice: data.purchasePrice || '',
+      gstAmount: data.gstAmount || '',
+      
+      // Vehicle Details
+      assetType: data.assetType || '',
+      bodyType: data.bodyType || '',
+      vehicleMake: data.vehicleMake || '',
+      vehicleModel: data.vehicleModel || '',
+      vehicleYear: data.vehicleYear || '',
+      transmission: data.transmission || '',
+      fuelType: data.fuelType || '',
+      color: data.color || '',
+      engineNumber: data.engineNumber || '',
+      
+      // Identification
+      vin: data.vin || '',
+      nvic: data.nvic || '',
+      registration: data.registration || '',
+      state: data.state || '',
+      
+      // Fraud Analysis
+      fraudScore: fraudResult.fraudScore,
+      fraudIndicators: fraudResult.fraudIndicators,
+      riskLevel: fraudResult.riskLevel,
+      
+      // Vendor & Invoice
+      vendorName: data.vendorName || '',
+      vendorAbn: data.vendorAbn || '',
+      purchaseDate: data.purchaseDate || '',
+      invoiceNumber: data.invoiceNumber || '',
+      
+      // Bank Details (placeholders for future use)
+      bankName: '',
+      bsbNumber: '',
+      accountNumber: '',
+      accountName: ''
+    });
+    
+    setConfidence(confidenceScore);
+    setFieldsWithLowConfidence(data.fieldsWithLowConfidence || []);
+    setFraudAnalysis(fraudResult);
+    setIsProcessing(false);
+    setProcessingProgress(0);
+  };
+
   const handleDataUpdate = (updatedData: Partial<InvoiceData>) => {
     const newData = { ...invoiceData, ...updatedData };
     
-    // Re-run fraud detection when data changes (without re-running document analysis)
-    const fraudAnalysis = FraudDetectionService.analyzeInvoice(newData, confidence);
+    // Re-run fraud detection when data changes
+    const fraudResult = FraudDetectionService.analyzeInvoice(newData, confidence);
     
     setInvoiceData({
       ...newData,
-      fraudScore: fraudAnalysis.fraudScore,
-      fraudIndicators: fraudAnalysis.fraudIndicators,
-      riskLevel: fraudAnalysis.riskLevel
-    });
+      fraudScore: fraudResult.fraudScore,
+      fraudIndicators: fraudResult.fraudIndicators,
+      riskLevel: fraudResult.riskLevel
+    } as InvoiceData);
+    
+    setFraudAnalysis(fraudResult);
   };
 
   const handleExport = () => {
+    if (!invoiceData) return;
+    
     const dataStr = JSON.stringify(invoiceData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -214,20 +204,22 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <Toaster />
+      
       {/* Header */}
-      <header className="border-b bg-card/80 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-primary">
-              <Car className="h-6 w-6 text-primary-foreground" />
+      <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <FileText className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-3xl font-bold text-foreground">
                 Australian Vehicle Invoice Processor
               </h1>
-              <p className="text-muted-foreground">
-                Extract tax invoice data from PDFs and images with fraud detection
+              <p className="text-muted-foreground mt-1">
+                Fast PDF processing with AI-powered extraction and fraud detection
               </p>
             </div>
           </div>
@@ -236,92 +228,85 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Upload & Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <Card className="p-6 shadow-card">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold">Upload Invoice</h2>
-              </div>
-              <DocumentUpload onFileUpload={handleFileUpload} />
-            </Card>
-
-            {uploadedFile && (
-              <Card className="p-6 shadow-document">
-                <h3 className="text-lg font-semibold mb-4">Document Preview</h3>
-                <DocumentPreview file={uploadedFile} />
-              </Card>
+            <DocumentUpload onFileUpload={handleFileUpload} />
+            
+            {file && (
+              <DocumentPreview 
+                file={file} 
+              />
             )}
           </div>
 
-          {/* Right Column - Form */}
           <div className="space-y-6">
-            <Card className="p-6 shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-success" />
-                  <h2 className="text-xl font-semibold">Invoice Details</h2>
-                </div>
-              </div>
-
-              {invoiceData.fraudScore !== undefined && (
-                <>
-                  <FraudScoreIndicator
-                    fraudScore={invoiceData.fraudScore}
-                    riskLevel={invoiceData.riskLevel || 'medium'}
-                    fraudIndicators={invoiceData.fraudIndicators || []}
-                    className="mb-6"
-                  />
-                  <Separator className="my-6" />
-                </>
-              )}
-
-              <InvoiceForm 
-                data={invoiceData} 
-                onDataUpdate={handleDataUpdate}
-                confidence={confidence}
-                fieldsWithLowConfidence={fieldsWithLowConfidence}
+            {isProcessing && processingMode === 'sync' && (
+              <ProcessingStatus 
+                progress={processingProgress}
+                fileName={file?.name || ""}
               />
-              
-              <Separator className="my-6" />
-              
-              <Button onClick={handleExport} className="w-full mb-4" disabled={!uploadedFile}>
-                <Download className="w-4 h-4 mr-2" />
-                Export Data
-              </Button>
-            </Card>
-
-            {/* Processing Status */}
-            {isProcessing && (
-              <Card className="p-4 border-primary/20 bg-primary/5">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <p className="text-sm font-medium">
-                      Processing document with AI-enhanced extraction and fraud detection...
-                    </p>
-                  </div>
-                  <Progress value={processingProgress} className="w-full" />
-                  <p className="text-xs text-muted-foreground">
-                    {processingProgress < 25 ? 'Initializing OCR engine...' :
-                     processingProgress < 50 ? 'Extracting text from document...' :
-                     processingProgress < 75 ? 'Parsing invoice data...' :
-                     'Running fraud detection analysis...'}
-                  </p>
-                </div>
-              </Card>
             )}
-            
-            {uploadedFile && !isProcessing && Object.values(invoiceData).some(value => value !== "") && (
-              <Card className="p-4 border-success/20 bg-success/5">
-                <div className="flex items-center gap-2 text-success">
-                  <div className="h-2 w-2 rounded-full bg-success" />
-                  <p className="text-sm font-medium">
-                    Document processed successfully! Review the extracted data and fraud analysis.
-                  </p>
-                </div>
-              </Card>
+
+            {processingMode === 'async' && jobId && (
+              <JobTracker 
+                jobId={jobId}
+                onComplete={(result) => handleProcessingComplete(result, 85)}
+                onError={(error) => {
+                  setIsProcessing(false);
+                  toast({
+                    title: "Processing failed",
+                    description: error,
+                    variant: "destructive",
+                  });
+                }}
+              />
+            )}
+
+            {invoiceData && (
+              <div className="space-y-6">
+                <FraudScoreIndicator 
+                  fraudScore={invoiceData.fraudScore}
+                  riskLevel={invoiceData.riskLevel}
+                  fraudIndicators={invoiceData.fraudIndicators}
+                />
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Extracted Data
+                    </CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-muted-foreground">
+                        Confidence: {confidence}%
+                      </span>
+                      {processingMode === 'sync' && (
+                        <div className="flex items-center text-xs text-success">
+                          <Zap className="mr-1 h-3 w-3" />
+                          Fast Processing
+                        </div>
+                      )}
+                      {processingMode === 'async' && (
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Clock className="mr-1 h-3 w-3" />
+                          Background Processing
+                        </div>
+                      )}
+                      <Button onClick={handleExport} size="sm" variant="outline">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export JSON
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <InvoiceForm 
+                      data={invoiceData}
+                      onChange={handleDataUpdate}
+                      fieldsWithLowConfidence={fieldsWithLowConfidence}
+                      disabled={false}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         </div>
