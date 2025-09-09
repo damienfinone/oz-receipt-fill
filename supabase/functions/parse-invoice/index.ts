@@ -156,7 +156,7 @@ serve(async (req) => {
             - Check for realistic price ranges for vehicles
             - Identify any suspicious patterns or inconsistencies
 
-            Return the data as a JSON object with the exact field names above. If a field cannot be found, use an empty string. Include a confidence score (0-100) for the overall extraction quality.
+            CRITICAL: Return ONLY a raw JSON object. Do not wrap in markdown code blocks or add any formatting. Return the data as a JSON object with the exact field names above. If a field cannot be found, use an empty string. Include a confidence score (0-100) for the overall extraction quality.
 
             Also provide fieldsWithLowConfidence as an array of field names where the extraction confidence is below 70%.
 
@@ -169,7 +169,7 @@ serve(async (req) => {
               - severity: number 1-10 indicating severity
             - riskLevel: "low", "medium", or "high" based on overall assessment
 
-            Example response:
+            Example response (return exactly this JSON format, no markdown):
             {
               "data": {
                 "totalCost": "45000",
@@ -215,8 +215,16 @@ serve(async (req) => {
 
     console.log('OpenAI response:', responseText);
 
+    // Clean response - remove markdown code blocks if present
+    let cleanedResponse = responseText.trim();
+    if (cleanedResponse.startsWith('```json')) {
+      cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanedResponse.startsWith('```')) {
+      cleanedResponse = cleanedResponse.replace(/^```[a-z]*\s*/, '').replace(/\s*```$/, '');
+    }
+
     // Parse JSON response
-    const parsed: ParsedResult = JSON.parse(responseText);
+    const parsed: ParsedResult = JSON.parse(cleanedResponse);
     
     // Validate response structure
     if (!parsed.data || typeof parsed.confidence !== 'number') {

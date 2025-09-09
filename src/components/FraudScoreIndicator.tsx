@@ -87,8 +87,8 @@ export function FraudScoreIndicator({
             <div className="flex flex-wrap gap-2">
               {criticalCount > 0 && (
                 <Tooltip>
-                  <TooltipTrigger>
-                    <Badge variant="destructive" className="text-xs">
+                  <TooltipTrigger className="cursor-pointer">
+                    <Badge variant="destructive" className="text-xs hover:opacity-80 transition-opacity">
                       {criticalCount} Critical
                     </Badge>
                   </TooltipTrigger>
@@ -108,8 +108,8 @@ export function FraudScoreIndicator({
               
               {warningCount > 0 && (
                 <Tooltip>
-                  <TooltipTrigger>
-                    <Badge variant="secondary" className="text-xs bg-warning text-warning-foreground">
+                  <TooltipTrigger className="cursor-pointer">
+                    <Badge variant="secondary" className="text-xs bg-warning text-warning-foreground hover:opacity-80 transition-opacity">
                       {warningCount} Warning{warningCount > 1 ? 's' : ''}
                     </Badge>
                   </TooltipTrigger>
@@ -129,8 +129,8 @@ export function FraudScoreIndicator({
               
               {infoCount > 0 && (
                 <Tooltip>
-                  <TooltipTrigger>
-                    <Badge variant="outline" className="text-xs">
+                  <TooltipTrigger className="cursor-pointer">
+                    <Badge variant="outline" className="text-xs hover:opacity-80 transition-opacity">
                       {infoCount} Info
                     </Badge>
                   </TooltipTrigger>
