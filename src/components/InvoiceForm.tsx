@@ -38,7 +38,7 @@ interface InvoiceData {
   // Fraud Detection
   fraudScore?: number;
   fraudIndicators?: Array<{
-    type: 'critical' | 'warning' | 'info';
+    type: 'critical' | 'warning' | 'info' | 'metadata-tampering' | 'visual-inconsistency' | 'text-layer-mismatch';
     field: string;
     message: string;
     severity: number;

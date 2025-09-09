@@ -1,5 +1,5 @@
 interface FraudIndicator {
-  type: 'critical' | 'warning' | 'info';
+  type: 'critical' | 'warning' | 'info' | 'metadata-tampering' | 'visual-inconsistency' | 'text-layer-mismatch';
   field: string;
   message: string;
   severity: number; // 1-10, higher is more severe
@@ -12,7 +12,7 @@ interface FraudAnalysis {
 }
 
 export class FraudDetectionService {
-  static analyzeInvoice(data: any, confidence?: number): FraudAnalysis {
+  static analyzeInvoice(data: any, confidence?: number, documentAnalysis?: any): FraudAnalysis {
     const indicators: FraudIndicator[] = [];
     let baseScore = 100;
 
@@ -41,6 +41,13 @@ export class FraudDetectionService {
     const formatIssues = this.validateFormats(data);
     indicators.push(...formatIssues);
     baseScore -= formatIssues.reduce((sum, issue) => sum + issue.severity, 0);
+
+    // Document analysis integration (tampering detection)
+    if (documentAnalysis?.suspiciousIndicators) {
+      indicators.push(...documentAnalysis.suspiciousIndicators);
+      baseScore -= documentAnalysis.suspiciousIndicators.reduce((sum: number, issue: any) => 
+        sum + issue.severity * 1.2, 0);
+    }
 
     // Clamp score between 0-100
     const fraudScore = Math.max(0, Math.min(100, baseScore));

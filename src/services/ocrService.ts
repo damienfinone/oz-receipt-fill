@@ -284,9 +284,24 @@ export class OCRService {
   static async processInvoice(
     file: File, 
     onProgress?: (progress: number) => void
-  ): Promise<{ data: Partial<ExtractedInvoiceData>; confidence: number; fieldsWithLowConfidence: string[] }> {
+  ): Promise<{ 
+    data: Partial<ExtractedInvoiceData>; 
+    confidence: number; 
+    fieldsWithLowConfidence: string[]; 
+    documentAnalysis?: any;
+    ocrText?: string;
+  }> {
     try {
       onProgress?.(10);
+      
+      // Start document analysis in parallel (non-blocking)
+      let documentAnalysisPromise: Promise<any> | null = null;
+      try {
+        const { DocumentAnalysisService } = await import('./documentAnalysisService');
+        documentAnalysisPromise = DocumentAnalysisService.analyzeDocument(file);
+      } catch (error) {
+        console.warn('Document analysis service not available:', error);
+      }
       
       // Extract text with preprocessing enabled
       const text = await this.extractTextFromFile(file, true);
@@ -311,9 +326,34 @@ export class OCRService {
         if (aiResult && aiResult.confidence > 0) {
           console.log('AI parsing successful:', aiResult);
           console.log('AI data structure:', JSON.stringify(aiResult.data, null, 2));
+          
+          // Wait for document analysis to complete and include it
+          let documentAnalysis = null;
+          if (documentAnalysisPromise) {
+            try {
+              documentAnalysis = await documentAnalysisPromise;
+              
+              // Compare OCR text with text layer if available
+              if (documentAnalysis?.textLayerText) {
+                const { DocumentAnalysisService } = await import('./documentAnalysisService');
+                const comparison = DocumentAnalysisService.compareOcrWithTextLayer(
+                  text, 
+                  documentAnalysis.textLayerText
+                );
+                documentAnalysis.suspiciousIndicators.push(...comparison.indicators);
+              }
+            } catch (error) {
+              console.warn('Document analysis failed:', error);
+            }
+          }
+          
           onProgress?.(90);
           onProgress?.(100);
-          return aiResult;
+          return {
+            ...aiResult,
+            documentAnalysis,
+            ocrText: text
+          };
         }
       } catch (aiError) {
         console.warn('AI parsing failed, falling back to regex:', aiError);
@@ -322,13 +362,36 @@ export class OCRService {
       // Fallback to local regex parsing
       console.log('Using local regex parsing...');
       const extractedData = this.parseAustralianInvoice(text);
+      
+      // Wait for document analysis to complete
+      let documentAnalysis = null;
+      if (documentAnalysisPromise) {
+        try {
+          documentAnalysis = await documentAnalysisPromise;
+          
+          // Compare OCR text with text layer if available
+          if (documentAnalysis?.textLayerText) {
+            const { DocumentAnalysisService } = await import('./documentAnalysisService');
+            const comparison = DocumentAnalysisService.compareOcrWithTextLayer(
+              text, 
+              documentAnalysis.textLayerText
+            );
+            documentAnalysis.suspiciousIndicators.push(...comparison.indicators);
+          }
+        } catch (error) {
+          console.warn('Document analysis failed:', error);
+        }
+      }
+      
       const result = {
         data: extractedData,
         confidence: 60,
         fieldsWithLowConfidence: Object.keys(extractedData).filter(key => 
           !extractedData[key as keyof ExtractedInvoiceData] || 
           String(extractedData[key as keyof ExtractedInvoiceData]).length < 2
-        )
+        ),
+        documentAnalysis,
+        ocrText: text
       };
       
       onProgress?.(90);

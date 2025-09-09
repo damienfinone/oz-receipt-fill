@@ -42,7 +42,7 @@ interface InvoiceData {
   // Fraud Detection
   fraudScore?: number;
   fraudIndicators?: Array<{
-    type: 'critical' | 'warning' | 'info';
+    type: 'critical' | 'warning' | 'info' | 'metadata-tampering' | 'visual-inconsistency' | 'text-layer-mismatch';
     field: string;
     message: string;
     severity: number;
@@ -125,8 +125,12 @@ const Index = () => {
         (progress) => setProcessingProgress(progress)
       );
       
-      // Run fraud detection analysis
-      const fraudAnalysis = FraudDetectionService.analyzeInvoice(result.data, result.confidence);
+      // Run fraud detection analysis (including document analysis if available)
+      const fraudAnalysis = FraudDetectionService.analyzeInvoice(
+        result.data, 
+        result.confidence, 
+        result.documentAnalysis
+      );
       
       // Update form with extracted data and fraud analysis
       const dataWithFraud = {
@@ -187,7 +191,7 @@ const Index = () => {
   const handleDataUpdate = (updatedData: Partial<InvoiceData>) => {
     const newData = { ...invoiceData, ...updatedData };
     
-    // Re-run fraud detection when data changes
+    // Re-run fraud detection when data changes (without re-running document analysis)
     const fraudAnalysis = FraudDetectionService.analyzeInvoice(newData, confidence);
     
     setInvoiceData({

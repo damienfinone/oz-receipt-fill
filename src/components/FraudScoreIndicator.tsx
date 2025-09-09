@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 
 interface FraudIndicator {
-  type: 'critical' | 'warning' | 'info';
+  type: 'critical' | 'warning' | 'info' | 'metadata-tampering' | 'visual-inconsistency' | 'text-layer-mismatch';
   field: string;
   message: string;
   severity: number;
@@ -57,9 +57,14 @@ export function FraudScoreIndicator({
     }
   };
 
-  const criticalCount = fraudIndicators.filter(i => i.type === 'critical').length;
-  const warningCount = fraudIndicators.filter(i => i.type === 'warning').length;
-  const infoCount = fraudIndicators.filter(i => i.type === 'info').length;
+    // Group indicators by type
+    const criticalCount = fraudIndicators.filter(i => 
+      i.type === 'critical' || i.type === 'metadata-tampering'
+    ).length;
+    const warningCount = fraudIndicators.filter(i => 
+      i.type === 'warning' || i.type === 'visual-inconsistency' || i.type === 'text-layer-mismatch'
+    ).length;
+    const infoCount = fraudIndicators.filter(i => i.type === 'info').length;
 
   return (
     <TooltipProvider>
@@ -95,7 +100,7 @@ export function FraudScoreIndicator({
                   <TooltipContent>
                     <div className="space-y-1">
                       {fraudIndicators
-                        .filter(i => i.type === 'critical')
+                        .filter(i => i.type === 'critical' || i.type === 'metadata-tampering')
                         .map((indicator, idx) => (
                           <div key={idx} className="text-xs">
                             {indicator.field}: {indicator.message}
@@ -116,7 +121,7 @@ export function FraudScoreIndicator({
                   <TooltipContent>
                     <div className="space-y-1">
                       {fraudIndicators
-                        .filter(i => i.type === 'warning')
+                        .filter(i => i.type === 'warning' || i.type === 'visual-inconsistency' || i.type === 'text-layer-mismatch')
                         .map((indicator, idx) => (
                           <div key={idx} className="text-xs">
                             {indicator.field}: {indicator.message}
